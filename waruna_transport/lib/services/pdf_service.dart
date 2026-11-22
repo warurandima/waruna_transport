@@ -143,10 +143,13 @@ class PdfService {
               pw.TableHelper.fromTextArray(
                 headers: ['Date', 'Type', 'Note', 'Amount'],
                 data: expenses.map((e) {
-                  final expenseType = (e.customType != null && e.customType!.isNotEmpty)
+                  final expenseType =
+                      (e.customType != null && e.customType!.isNotEmpty)
                       ? '${e.type} (${e.customType})'
                       : e.type;
-                  final noteText = (e.note == null || e.note!.isEmpty) ? '-' : e.note!;
+                  final noteText = (e.note == null || e.note!.isEmpty)
+                      ? '-'
+                      : e.note!;
                   return [
                     dateFormat.format(e.date),
                     expenseType,

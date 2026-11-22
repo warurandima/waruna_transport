@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../models/order_model.dart';
 import '../models/expense_model.dart';
 import '../models/service_model.dart';
 import '../services/firestore_service.dart';
 import '../services/pdf_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/page_transitions.dart';
 import 'add_order_screen.dart';
 import 'add_expense_screen.dart';
 import 'debtors_screen.dart';
@@ -66,7 +68,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                SlideFadePageRoute(page: const SettingsScreen()),
               );
             },
           ),
@@ -76,7 +78,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ResetPinScreen()),
+                SlideFadePageRoute(page: const ResetPinScreen()),
               );
             },
           ),
@@ -123,7 +125,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const AddOrderScreen()),
+                  SlideFadePageRoute(page: const AddOrderScreen()),
                 );
               },
               backgroundColor: AppColors.primaryColor,
@@ -135,13 +137,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            )
+            ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack)
           : _selectedIndex == 2
           ? FloatingActionButton.extended(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
+                  SlideFadePageRoute(page: const AddExpenseScreen()),
                 );
               },
               backgroundColor: Colors.redAccent,
@@ -153,7 +155,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            )
+            ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack)
           : null,
     );
   }
@@ -270,21 +272,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildSummaryCard(
-                          title: 'මාසික ආදායම (Monthly Income)',
-                          amount: _currencyFormat.format(monthlyIncome),
-                          icon: Icons.trending_up,
-                          color: Colors.teal,
-                        ),
+                        child:
+                            _buildSummaryCard(
+                              title: 'මාසික ආදායම (Monthly Income)',
+                              amount: _currencyFormat.format(monthlyIncome),
+                              icon: Icons.trending_up,
+                              color: Colors.teal,
+                            ).animate().scale(
+                              delay: 100.ms,
+                              duration: 500.ms,
+                              curve: Curves.easeOutBack,
+                            ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildSummaryCard(
-                          title: 'මාසික වියදම (Monthly Expenses)',
-                          amount: _currencyFormat.format(monthlyExpense),
-                          icon: Icons.trending_down,
-                          color: Colors.redAccent,
-                        ),
+                        child:
+                            _buildSummaryCard(
+                              title: 'මාසික වියදම (Monthly Expenses)',
+                              amount: _currencyFormat.format(monthlyExpense),
+                              icon: Icons.trending_down,
+                              color: Colors.redAccent,
+                            ).animate().scale(
+                              delay: 200.ms,
+                              duration: 500.ms,
+                              curve: Curves.easeOutBack,
+                            ),
                       ),
                     ],
                   ),
@@ -296,6 +308,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: monthlyProfit >= 0
                         ? AppColors.primaryColor
                         : Colors.orange,
+                  ).animate().scale(
+                    delay: 300.ms,
+                    duration: 500.ms,
+                    curve: Curves.easeOutBack,
                   ),
                   const SizedBox(height: 18),
                   ElevatedButton.icon(
@@ -322,6 +338,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                  ).animate().scale(
+                    delay: 400.ms,
+                    duration: 400.ms,
+                    curve: Curves.easeOutBack,
                   ),
                   const SizedBox(height: 24),
                   Text(
@@ -351,7 +371,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     )
                   else
-                    ...orders.take(5).map((order) => _buildOrderTile(order)),
+                    ...orders.take(5).toList().asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final order = entry.value;
+                      return _buildOrderTile(order)
+                          .animate()
+                          .fade(delay: (index * 80).ms, duration: 400.ms)
+                          .slideX(begin: 0.1);
+                    }),
                 ],
               ),
             );
@@ -450,7 +477,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           itemCount: orders.length,
           itemBuilder: (context, index) {
-            return _buildOrderTile(orders[index]);
+            return _buildOrderTile(orders[index])
+                .animate()
+                .fade(delay: (index < 10 ? index * 50 : 0).ms, duration: 400.ms)
+                .slideX(begin: 0.1);
           },
         );
       },
@@ -505,43 +535,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 : expense.type;
 
             return Card(
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.red.withValues(alpha: 0.15),
-                  child: const Icon(Icons.money_off, color: Colors.red),
-                ),
-                title: Text(
-                  titleText,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (expense.note != null && expense.note!.isNotEmpty)
-                      Text(expense.note!),
-                    Text(
-                      _dateFormat.format(expense.date),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.red.withValues(alpha: 0.15),
+                      child: const Icon(Icons.money_off, color: Colors.red),
+                    ),
+                    title: Text(
+                      titleText,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (expense.note != null && expense.note!.isNotEmpty)
+                          Text(expense.note!),
+                        Text(
+                          _dateFormat.format(expense.date),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    trailing: Text(
+                      _currencyFormat.format(expense.amount),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                        fontSize: 16,
                       ),
                     ),
-                  ],
-                ),
-                trailing: Text(
-                  _currencyFormat.format(expense.amount),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                    fontSize: 16,
                   ),
-                ),
-              ),
-            );
+                )
+                .animate()
+                .fade(delay: (index < 10 ? index * 50 : 0).ms, duration: 400.ms)
+                .slideX(begin: 0.1);
           },
         );
       },

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../models/debtor_model.dart';
 import '../services/firestore_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/page_transitions.dart';
 
 class DebtorsScreen extends StatelessWidget {
   const DebtorsScreen({super.key});
@@ -100,7 +102,7 @@ class DebtorsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
+              ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -108,58 +110,68 @@ class DebtorsScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final debtor = debtors[index];
                     return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.orange.withValues(
-                            alpha: 0.15,
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.person, color: Colors.orange),
-                        ),
-                        title: Text(
-                          debtor.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(debtor.phone),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              currencyFormat.format(debtor.totalDue),
-                              style: TextStyle(
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.orange.withValues(
+                                alpha: 0.15,
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                color: Colors.orange,
+                              ),
+                            ),
+                            title: Text(
+                              debtor.name,
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: debtor.totalDue > 0
-                                    ? Colors.red
-                                    : Colors.green,
-                                fontSize: 16,
                               ),
                             ),
-                            Text(
-                              debtor.totalDue > 0 ? 'හිඟ මුදල' : 'පියවා ඇත',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: debtor.totalDue > 0
-                                    ? Colors.red
-                                    : Colors.green,
-                              ),
+                            subtitle: Text(debtor.phone),
+                            trailing: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  currencyFormat.format(debtor.totalDue),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: debtor.totalDue > 0
+                                        ? Colors.red
+                                        : Colors.green,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  debtor.totalDue > 0 ? 'හිඟ මුදල' : 'පියවා ඇත',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: debtor.totalDue > 0
+                                        ? Colors.red
+                                        : Colors.green,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  DebtorDetailScreen(phone: debtor.phone),
-                            ),
-                          );
-                        },
-                      ),
-                    );
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                SlideFadePageRoute(
+                                  page: DebtorDetailScreen(phone: debtor.phone),
+                                ),
+                              );
+                            },
+                          ),
+                        )
+                        .animate()
+                        .fade(
+                          delay: (index < 10 ? index * 50 : 0).ms,
+                          duration: 400.ms,
+                        )
+                        .slideX(begin: 0.1);
                   },
                 ),
               ),
@@ -336,7 +348,7 @@ class _DebtorDetailScreenState extends State<DebtorDetailScreen> {
                       ],
                     ),
                   ),
-                ),
+                ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
                 const SizedBox(height: 16),
                 if (debtor.totalDue > 0)
                   Card(

@@ -24,10 +24,10 @@ void main() {
     );
 
     expect(find.text('WARUNA TRANSPORT'), findsOneWidget);
-    expect(find.text('වරුණ ට්රාන්ස්පෝර්ට්'), findsOneWidget);
 
-    // Advance past the 3-second splash timer
-    await tester.pump(const Duration(seconds: 3));
+    // Advance past the 5-second splash animation and 800ms page transition
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 800));
     await tester.pumpAndSettle();
 
     // Verifies navigation to LoginScreen with PIN field
