@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import '../models/order_model.dart';
-import '../providers/app_provider.dart';
+import '../services/firestore_service.dart';
 import '../utils/app_colors.dart';
 
 class AddOrderScreen extends StatefulWidget {
@@ -14,30 +13,21 @@ class AddOrderScreen extends StatefulWidget {
 
 class _AddOrderScreenState extends State<AddOrderScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _customerNameController = TextEditingController();
   final _amountController = TextEditingController();
+  final _debtorNameController = TextEditingController();
+  final _debtorPhoneController = TextEditingController();
+  final _firestoreService = FirestoreService();
 
-  String _selectedMaterial = 'Sand';
-  String _selectedPaymentStatus = 'Cash';
+  final List<String> _materials = const ['වැලි', 'ගල්', 'ගඩොල්', 'සිමෙන්ති'];
+  String _selectedMaterial = 'වැලි';
+  bool _isCredit = false;
   bool _isSaving = false;
-
-  final List<Map<String, String>> _materialTypes = const [
-    {'value': 'Sand', 'label': 'වැලි (Sand)'},
-    {'value': 'Metal', 'label': 'ගල් (Metal)'},
-    {'value': 'Cement', 'label': 'සිමෙන්ති (Cement)'},
-    {'value': 'Soil', 'label': 'පස් (Soil)'},
-    {'value': 'Other', 'label': 'වෙනත් (Other)'},
-  ];
-
-  final List<Map<String, String>> _paymentStatuses = const [
-    {'value': 'Cash', 'label': 'මුදල් (Cash)'},
-    {'value': 'Credit', 'label': 'ණය (Credit)'},
-  ];
 
   @override
   void dispose() {
-    _customerNameController.dispose();
     _amountController.dispose();
+    _debtorNameController.dispose();
+    _debtorPhoneController.dispose();
     super.dispose();
   }
 
@@ -64,15 +54,16 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     try {
       final order = OrderModel(
         id: '',
+        date: DateTime.now(),
         materialType: _selectedMaterial,
         amount: amount,
-        paymentStatus: _selectedPaymentStatus,
-        customerName: _customerNameController.text.trim(),
+        isCredit: _isCredit,
         isCompleted: false,
-        date: DateTime.now(),
+        debtorName: _isCredit ? _debtorNameController.text.trim() : null,
+        debtorPhone: _isCredit ? _debtorPhoneController.text.trim() : null,
       );
 
-      await Provider.of<AppProvider>(context, listen: false).addOrder(order);
+      await _firestoreService.addOrder(order);
 
       if (!mounted) return;
 
@@ -103,7 +94,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'නව ඇණවුමක්',
@@ -130,38 +121,20 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextFormField(
-                        controller: _customerNameController,
-                        decoration: InputDecoration(
-                          labelText: 'පාරිභෝගිකයාගේ නම',
-                          prefixIcon: const Icon(Icons.person_outline),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'පාරිභෝගිකයාගේ නම ඇතුලත් කරන්න';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: _selectedMaterial,
                         decoration: InputDecoration(
-                          labelText: 'ද්‍රව්‍ය වර්ගය (Material Type)',
+                          labelText: 'ද්‍රව්‍ය වර්ගය (Material)',
                           prefixIcon: const Icon(Icons.category_outlined),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        items: _materialTypes.map((item) {
+                        items: _materials.map((m) {
                           return DropdownMenuItem<String>(
-                            value: item['value'],
-                            child: Text(item['label']!),
+                            value: m,
+                            child: Text(m),
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -175,7 +148,9 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'මුදල (රු.) - Amount',
                           prefixIcon: const Icon(Icons.attach_money),
@@ -194,29 +169,71 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedPaymentStatus,
-                        decoration: InputDecoration(
-                          labelText: 'ගෙවීම් තත්ත්වය (Payment Status)',
-                          prefixIcon: const Icon(Icons.payment_outlined),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      SwitchListTile(
+                        title: Text(
+                          'ණයට ද? (Is Credit?)',
+                          style: GoogleFonts.notoSansSinhala(
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        items: _paymentStatuses.map((item) {
-                          return DropdownMenuItem<String>(
-                            value: item['value'],
-                            child: Text(item['label']!),
-                          );
-                        }).toList(),
+                        subtitle: Text(
+                          _isCredit
+                              ? 'ණය පදනම මත (Credit Order)'
+                              : 'මුදල් ලැබුණි (Cash)',
+                          style: TextStyle(
+                            color: _isCredit
+                                ? Colors.orange.shade800
+                                : Colors.green.shade800,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        value: _isCredit,
+                        activeThumbColor: Colors.orange,
                         onChanged: (val) {
-                          if (val != null) {
-                            setState(() {
-                              _selectedPaymentStatus = val;
-                            });
-                          }
+                          setState(() {
+                            _isCredit = val;
+                          });
                         },
                       ),
+                      if (_isCredit) ...[
+                        const Divider(height: 24),
+                        TextFormField(
+                          controller: _debtorNameController,
+                          decoration: InputDecoration(
+                            labelText: 'ණයගැතියාගේ නම (Debtor Name)',
+                            prefixIcon: const Icon(Icons.person_outline),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (_isCredit &&
+                                (value == null || value.trim().isEmpty)) {
+                              return 'කරුණාකර ණයගැතියාගේ නම ඇතුලත් කරන්න';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _debtorPhoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: 'දුරකථන අංකය (Phone Number)',
+                            prefixIcon: const Icon(Icons.phone_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (_isCredit &&
+                                (value == null || value.trim().isEmpty)) {
+                              return 'කරුණාකර දුරකථන අංකය ඇතුලත් කරන්න';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -243,7 +260,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                         ),
                       )
                     : Text(
-                        'සුරකින්න (Save Order)',
+                        'සුරකින්න',
                         style: GoogleFonts.notoSansSinhala(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

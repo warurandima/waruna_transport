@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import '../models/expense_model.dart';
-import '../providers/app_provider.dart';
+import '../services/firestore_service.dart';
 import '../utils/app_colors.dart';
 
 class AddExpenseScreen extends StatefulWidget {
@@ -15,21 +14,22 @@ class AddExpenseScreen extends StatefulWidget {
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
+  final _customTypeController = TextEditingController();
   final _noteController = TextEditingController();
+  final _firestoreService = FirestoreService();
 
-  String _selectedType = 'Fuel';
-  bool _isSaving = false;
-
-  final List<Map<String, String>> _expenseTypes = const [
-    {'value': 'Fuel', 'label': 'ඉන්ධන (Fuel)'},
-    {'value': 'Maintenance', 'label': 'නඩත්තු (Maintenance)'},
-    {'value': 'Salary', 'label': 'වැටුප් (Salaries)'},
-    {'value': 'Other', 'label': 'වෙනත් (Other)'},
+  final List<String> _types = const [
+    'තෙල් (Fuel)',
+    'නඩත්තු (Maintenance)',
+    'වෙනත් (Other)',
   ];
+  String _selectedType = 'තෙල් (Fuel)';
+  bool _isSaving = false;
 
   @override
   void dispose() {
     _amountController.dispose();
+    _customTypeController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -55,15 +55,21 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     });
 
     try {
+      final isOther = _selectedType.startsWith('වෙනත්');
       final expense = ExpenseModel(
         id: '',
-        type: _selectedType,
-        amount: amount,
-        note: _noteController.text.trim(),
         date: DateTime.now(),
+        type: isOther && _customTypeController.text.trim().isNotEmpty
+            ? _customTypeController.text.trim()
+            : _selectedType,
+        amount: amount,
+        customType: isOther ? _customTypeController.text.trim() : null,
+        note: _noteController.text.trim().isNotEmpty
+            ? _noteController.text.trim()
+            : null,
       );
 
-      await Provider.of<AppProvider>(context, listen: false).addExpense(expense);
+      await _firestoreService.addExpense(expense);
 
       if (!mounted) return;
 
@@ -93,8 +99,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isOther = _selectedType.startsWith('වෙනත්');
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'නව වියදමක්',
@@ -125,16 +133,18 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       DropdownButtonFormField<String>(
                         initialValue: _selectedType,
                         decoration: InputDecoration(
-                          labelText: 'වියදම් වර්ගය (Expense Type)',
-                          prefixIcon: const Icon(Icons.local_gas_station_outlined),
+                          labelText: 'වියදම් වර්ගය (Type)',
+                          prefixIcon: const Icon(
+                            Icons.local_gas_station_outlined,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        items: _expenseTypes.map((item) {
+                        items: _types.map((t) {
                           return DropdownMenuItem<String>(
-                            value: item['value'],
-                            child: Text(item['label']!),
+                            value: t,
+                            child: Text(t),
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -145,10 +155,32 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           }
                         },
                       ),
+                      if (isOther) ...[
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _customTypeController,
+                          decoration: InputDecoration(
+                            labelText: 'වියදම කුමක්ද? (Custom Expense Name)',
+                            prefixIcon: const Icon(Icons.edit_note_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (isOther &&
+                                (value == null || value.trim().isEmpty)) {
+                              return 'කරුණාකර වියදම් නම ඇතුලත් කරන්න';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'මුදල (රු.) - Amount',
                           prefixIcon: const Icon(Icons.attach_money),
@@ -204,7 +236,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         ),
                       )
                     : Text(
-                        'සුරකින්න (Save Expense)',
+                        'සුරකින්න',
                         style: GoogleFonts.notoSansSinhala(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

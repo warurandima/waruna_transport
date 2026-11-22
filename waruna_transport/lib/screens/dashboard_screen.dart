@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import '../models/order_model.dart';
-import '../providers/app_provider.dart';
+import '../models/expense_model.dart';
+import '../models/service_model.dart';
+import '../services/firestore_service.dart';
+import '../services/pdf_service.dart';
 import '../utils/app_colors.dart';
 import 'add_order_screen.dart';
 import 'add_expense_screen.dart';
+import 'debtors_screen.dart';
 import 'reset_pin_screen.dart';
+import 'settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -18,27 +22,54 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
-  final _currencyFormat = NumberFormat.currency(symbol: 'රු. ', decimalDigits: 2);
+  final _firestoreService = FirestoreService();
+  final _pdfService = PdfService();
+  final _currencyFormat = NumberFormat.currency(
+    symbol: 'රු. ',
+    decimalDigits: 2,
+  );
   final _dateFormat = DateFormat('yyyy-MM-dd HH:mm');
 
   @override
   Widget build(BuildContext context) {
-    final appProvider = Provider.of<AppProvider>(context);
-
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Waruna Transport',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset(
+                'assets/images/logo.png',
+                height: 30,
+                width: 30,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Waruna Transport',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
         backgroundColor: AppColors.primaryColor,
         elevation: 0,
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white),
+            tooltip: 'සැකසුම් (Settings)',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.lock_reset, color: Colors.white),
             tooltip: 'PIN අංකය වෙනස් කරන්න',
@@ -54,13 +85,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          _buildHomeTab(appProvider),
-          _buildOrdersTab(appProvider),
-          _buildExpensesTab(appProvider),
+          _buildHomeTab(),
+          _buildOrdersTab(),
+          _buildExpensesTab(),
+          const DebtorsScreen(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
+        type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
@@ -68,13 +101,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         selectedItemColor: AppColors.primaryColor,
         unselectedItemColor: Colors.grey,
-        selectedLabelStyle: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.bold),
+        selectedLabelStyle: GoogleFonts.notoSansSinhala(
+          fontWeight: FontWeight.bold,
+        ),
         unselectedLabelStyle: GoogleFonts.notoSansSinhala(),
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'මුල් පිටුව',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'මුල් පිටුව'),
           BottomNavigationBarItem(
             icon: Icon(Icons.local_shipping),
             label: 'ඇණවුම්',
@@ -83,6 +115,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icon(Icons.attach_money),
             label: 'වියදම්',
           ),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'ණය'),
         ],
       ),
       floatingActionButton: _selectedIndex == 1
@@ -104,169 +137,227 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             )
           : _selectedIndex == 2
-              ? FloatingActionButton.extended(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
-                    );
-                  },
-                  backgroundColor: Colors.redAccent,
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: Text(
-                    'නව වියදමක්',
-                    style: GoogleFonts.notoSansSinhala(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                )
-              : null,
-    );
-  }
-
-  Widget _buildHomeTab(AppProvider provider) {
-    final totalOrdersRevenue = provider.orders.fold<double>(
-      0.0,
-      (sum, item) => sum + item.amount,
-    );
-    final totalExpenses = provider.expenses.fold<double>(
-      0.0,
-      (sum, item) => sum + item.amount,
-    );
-    final netBalance = totalOrdersRevenue - totalExpenses;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'ව්‍යාපාර දළ සටහන (Summary)',
-            style: GoogleFonts.notoSansSinhala(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.secondaryColor,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSummaryCard(
-                  title: 'මුළු ආදායම',
-                  amount: _currencyFormat.format(totalOrdersRevenue),
-                  icon: Icons.trending_up,
-                  color: Colors.teal,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSummaryCard(
-                  title: 'මුළු වියදම',
-                  amount: _currencyFormat.format(totalExpenses),
-                  icon: Icons.trending_down,
-                  color: Colors.redAccent,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildSummaryCard(
-            title: 'ශුද්ධ ශේෂය (Net Balance)',
-            amount: _currencyFormat.format(netBalance),
-            icon: Icons.account_balance_wallet,
-            color: netBalance >= 0 ? AppColors.primaryColor : Colors.orange,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'ඉක්මන් ක්‍රියා (Quick Actions)',
-            style: GoogleFonts.notoSansSinhala(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.secondaryColor,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AddOrderScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.add_shopping_cart),
-                  label: Text(
-                    'නව ඇණවුමක්',
-                    style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.money_off),
-                  label: Text(
-                    'නව වියදමක්',
-                    style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'මෑත ඇණවුම් (Recent Orders)',
-            style: GoogleFonts.notoSansSinhala(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.secondaryColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (provider.orders.isEmpty)
-            Card(
-              elevation: 0,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(24.0),
-                child: Center(
-                  child: Text('තවම කිසිදු ඇණවුමක් ඇතුලත් කර නැත.'),
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
+                );
+              },
+              backgroundColor: Colors.redAccent,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: Text(
+                'නව වියදමක්',
+                style: GoogleFonts.notoSansSinhala(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             )
-          else
-            ...provider.orders.take(5).map((order) => _buildOrderTile(order)),
-        ],
-      ),
+          : null,
+    );
+  }
+
+  Widget _buildHomeTab() {
+    final now = DateTime.now();
+
+    return StreamBuilder<List<OrderModel>>(
+      stream: _firestoreService.getOrders(),
+      builder: (context, ordersSnapshot) {
+        return StreamBuilder<List<ExpenseModel>>(
+          stream: _firestoreService.getExpenses(),
+          builder: (context, expensesSnapshot) {
+            final orders = ordersSnapshot.data ?? [];
+            final expenses = expensesSnapshot.data ?? [];
+
+            // Monthly calculations (current month up to today)
+            final currentMonthOrders = orders
+                .where(
+                  (o) => o.date.year == now.year && o.date.month == now.month,
+                )
+                .toList();
+            final currentMonthExpenses = expenses
+                .where(
+                  (e) => e.date.year == now.year && e.date.month == now.month,
+                )
+                .toList();
+
+            final monthlyIncome = currentMonthOrders.fold<double>(
+              0.0,
+              (sum, item) => sum + item.amount,
+            );
+            final monthlyExpense = currentMonthExpenses.fold<double>(
+              0.0,
+              (sum, item) => sum + item.amount,
+            );
+            final monthlyProfit = monthlyIncome - monthlyExpense;
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Service Reminder Banner from Firestore
+                  StreamBuilder<ServiceModel?>(
+                    stream: _firestoreService.getServiceInfo(),
+                    builder: (context, serviceSnapshot) {
+                      final serviceInfo = serviceSnapshot.data;
+                      if (serviceInfo == null) {
+                        return const SizedBox.shrink();
+                      }
+                      final daysRemaining = serviceInfo.nextServiceDate
+                          .difference(DateTime.now())
+                          .inDays;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: daysRemaining <= 5
+                              ? Colors.red.shade50
+                              : Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: daysRemaining <= 5
+                                ? Colors.red.shade300
+                                : Colors.blue.shade200,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.build_circle,
+                              color: daysRemaining <= 5
+                                  ? Colors.red
+                                  : Colors.blueAccent,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                daysRemaining < 0
+                                    ? 'සර්විස් දිනය දින ${-daysRemaining} කින් ප්‍රමාදයි!'
+                                    : daysRemaining == 0
+                                    ? 'අද ලොරි රථය සර්විස් කළ යුතු දිනයයි!'
+                                    : 'ඊළඟ සර්විස් කිරීම දින $daysRemaining කින් (Next Service in $daysRemaining days)',
+                                style: TextStyle(
+                                  color: daysRemaining <= 5
+                                      ? Colors.red.shade900
+                                      : Colors.blue.shade900,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  Text(
+                    'මෙම මාසයේ දළ සටහන (This Month)',
+                    style: GoogleFonts.notoSansSinhala(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.secondaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildSummaryCard(
+                          title: 'මාසික ආදායම (Monthly Income)',
+                          amount: _currencyFormat.format(monthlyIncome),
+                          icon: Icons.trending_up,
+                          color: Colors.teal,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildSummaryCard(
+                          title: 'මාසික වියදම (Monthly Expenses)',
+                          amount: _currencyFormat.format(monthlyExpense),
+                          icon: Icons.trending_down,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSummaryCard(
+                    title: 'මාසික ශුද්ධ ලාභය (Monthly Net Profit)',
+                    amount: _currencyFormat.format(monthlyProfit),
+                    icon: Icons.account_balance_wallet,
+                    color: monthlyProfit >= 0
+                        ? AppColors.primaryColor
+                        : Colors.orange,
+                  ),
+                  const SizedBox(height: 18),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _pdfService.generateMonthlyReport(
+                        currentMonthOrders,
+                        currentMonthExpenses,
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.secondaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
+                    icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+                    label: Text(
+                      'මාසික වාර්තාව (PDF Report)',
+                      style: GoogleFonts.notoSansSinhala(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'මෑත ඇණවුම් (Recent Orders)',
+                    style: GoogleFonts.notoSansSinhala(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (orders.isEmpty)
+                    Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Center(
+                          child: Text(
+                            'තවම කිසිදු ඇණවුමක් ඇතුලත් කර නැත.',
+                            style: GoogleFonts.notoSansSinhala(
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    ...orders.take(5).map((order) => _buildOrderTile(order)),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -296,8 +387,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Text(
                     title,
                     style: GoogleFonts.notoSansSinhala(
-                      fontSize: 13,
-                      color: Colors.grey.shade700,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -308,7 +398,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text(
               amount,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
@@ -319,170 +409,254 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildOrdersTab(AppProvider provider) {
-    if (provider.orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 12),
-            Text(
-              'තවම කිසිදු ඇණවුමක් ඇතුලත් කර නැත.',
-              style: GoogleFonts.notoSansSinhala(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddOrderScreen()),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: Text(
-                'නව ඇණවුමක් එක් කරන්න',
-                style: GoogleFonts.notoSansSinhala(),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryColor,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+  Widget _buildOrdersTab() {
+    return StreamBuilder<List<OrderModel>>(
+      stream: _firestoreService.getOrders(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 80, left: 12, right: 12),
-      itemCount: provider.orders.length,
-      itemBuilder: (context, index) {
-        return _buildOrderTile(provider.orders[index]);
+        final orders = snapshot.data ?? [];
+        if (orders.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 64,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'තවම කිසිදු ඇණවුමක් ඇතුලත් කර නැත.',
+                  style: GoogleFonts.notoSansSinhala(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.only(
+            top: 8,
+            bottom: 80,
+            left: 12,
+            right: 12,
+          ),
+          itemCount: orders.length,
+          itemBuilder: (context, index) {
+            return _buildOrderTile(orders[index]);
+          },
+        );
       },
     );
   }
 
-  Widget _buildExpensesTab(AppProvider provider) {
-    if (provider.expenses.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 12),
-            Text(
-              'තවම කිසිදු වියදමක් ඇතුලත් කර නැත.',
-              style: GoogleFonts.notoSansSinhala(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: Text(
-                'නව වියදමක් එක් කරන්න',
-                style: GoogleFonts.notoSansSinhala(),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+  Widget _buildExpensesTab() {
+    return StreamBuilder<List<ExpenseModel>>(
+      stream: _firestoreService.getExpenses(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 80, left: 12, right: 12),
-      itemCount: provider.expenses.length,
-      itemBuilder: (context, index) {
-        final expense = provider.expenses[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.red.withValues(alpha: 0.15),
-              child: const Icon(Icons.local_gas_station, color: Colors.red),
-            ),
-            title: Text(
-              expense.type,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        final expenses = snapshot.data ?? [];
+        if (expenses.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (expense.note.isNotEmpty) Text(expense.note),
+                Icon(
+                  Icons.receipt_long_outlined,
+                  size: 64,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(height: 12),
                 Text(
-                  _dateFormat.format(expense.date),
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  'තවම කිසිදු වියදමක් ඇතුලත් කර නැත.',
+                  style: GoogleFonts.notoSansSinhala(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
                 ),
               ],
             ),
-            trailing: Text(
-              _currencyFormat.format(expense.amount),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-                fontSize: 16,
-              ),
-            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.only(
+            top: 8,
+            bottom: 80,
+            left: 12,
+            right: 12,
           ),
+          itemCount: expenses.length,
+          itemBuilder: (context, index) {
+            final expense = expenses[index];
+            final titleText =
+                expense.customType != null && expense.customType!.isNotEmpty
+                ? expense.customType!
+                : expense.type;
+
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.red.withValues(alpha: 0.15),
+                  child: const Icon(Icons.money_off, color: Colors.red),
+                ),
+                title: Text(
+                  titleText,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (expense.note != null && expense.note!.isNotEmpty)
+                      Text(expense.note!),
+                    Text(
+                      _dateFormat.format(expense.date),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+                trailing: Text(
+                  _currencyFormat.format(expense.amount),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
   Widget _buildOrderTile(OrderModel order) {
-    final isCredit = order.paymentStatus.toLowerCase() == 'credit';
-
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: AppColors.primaryColor.withValues(alpha: 0.15),
-          child: const Icon(Icons.local_shipping, color: AppColors.primaryColor),
+          backgroundColor: order.isCompleted
+              ? Colors.green.withValues(alpha: 0.15)
+              : AppColors.primaryColor.withValues(alpha: 0.15),
+          child: Icon(
+            order.isCompleted ? Icons.check_circle : Icons.local_shipping,
+            color: order.isCompleted ? Colors.green : AppColors.primaryColor,
+          ),
         ),
         title: Text(
-          order.customerName,
+          order.materialType,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${order.materialType} • ${_dateFormat.format(order.date)}'),
-            Container(
-              margin: const EdgeInsets.only(top: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: isCredit ? Colors.orange.shade100 : Colors.green.shade100,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                isCredit ? 'ණය (Credit)' : 'මුදල් (Cash)',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: isCredit ? Colors.orange.shade900 : Colors.green.shade900,
+            Text(_dateFormat.format(order.date)),
+            if (order.debtorName != null && order.debtorName!.isNotEmpty)
+              Text('පාරිභෝගිකයා: ${order.debtorName}'),
+            Row(
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 4, right: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: order.isCredit
+                        ? Colors.orange.shade100
+                        : Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    order.isCredit ? 'ණයට (Credit)' : 'මුදල් (Cash)',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: order.isCredit
+                          ? Colors.orange.shade900
+                          : Colors.green.shade900,
+                    ),
+                  ),
                 ),
-              ),
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: order.isCompleted
+                        ? Colors.blue.shade100
+                        : Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    order.isCompleted ? 'සම්පූර්ණයි' : 'ක්‍රියාත්මක වෙමින්',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: order.isCompleted
+                          ? Colors.blue.shade900
+                          : Colors.grey.shade800,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        trailing: Text(
-          _currencyFormat.format(order.amount),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isCredit ? Colors.orange.shade800 : AppColors.primaryColor,
-            fontSize: 16,
-          ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _currencyFormat.format(order.amount),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: order.isCredit
+                    ? Colors.orange.shade800
+                    : AppColors.primaryColor,
+                fontSize: 16,
+              ),
+            ),
+            if (!order.isCompleted)
+              IconButton(
+                icon: const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.teal,
+                ),
+                tooltip: 'සම්පූර්ණයි ලෙස සලකුණු කරන්න',
+                onPressed: () async {
+                  await _firestoreService.markOrderCompleted(order.id);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('ඇණවුම සම්පූර්ණ කරන ලදී'),
+                        backgroundColor: Colors.teal,
+                      ),
+                    );
+                  }
+                },
+              ),
+          ],
         ),
       ),
     );

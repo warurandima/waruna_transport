@@ -1,53 +1,58 @@
 class OrderModel {
   final String id;
-  final String materialType; // e.g., Sand, Metal, Cement, Soil
-  final double amount;
-  final String paymentStatus; // "Cash" or "Credit"
-  final String customerName;
-  final bool isCompleted;
   final DateTime date;
+  final String materialType;
+  final double amount;
+  final bool isCredit;
+  final bool isCompleted;
+  final String? debtorName;
+  final String? debtorPhone;
 
   OrderModel({
     required this.id,
+    required this.date,
     required this.materialType,
     required this.amount,
-    required this.paymentStatus,
-    required this.customerName,
+    required this.isCredit,
     required this.isCompleted,
-    required this.date,
+    this.debtorName,
+    this.debtorPhone,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'date': date.toIso8601String(),
       'materialType': materialType,
       'amount': amount,
-      'paymentStatus': paymentStatus,
-      'customerName': customerName,
+      'isCredit': isCredit,
       'isCompleted': isCompleted,
-      'date': date.toIso8601String(),
+      'debtorName': debtorName,
+      'debtorPhone': debtorPhone,
     };
   }
 
-  factory OrderModel.fromMap(Map<String, dynamic> map, {String? id}) {
+  factory OrderModel.fromMap(Map<String, dynamic> map, String docId) {
     DateTime parsedDate;
     final dateVal = map['date'];
     if (dateVal is String) {
       parsedDate = DateTime.tryParse(dateVal) ?? DateTime.now();
-    } else if (dateVal != null && dateVal.runtimeType.toString().contains('Timestamp')) {
+    } else if (dateVal != null &&
+        dateVal.runtimeType.toString().contains('Timestamp')) {
       parsedDate = (dateVal as dynamic).toDate();
     } else {
       parsedDate = DateTime.now();
     }
 
     return OrderModel(
-      id: id ?? map['id'] ?? '',
+      id: docId.isNotEmpty ? docId : (map['id'] ?? ''),
+      date: parsedDate,
       materialType: map['materialType'] ?? '',
       amount: (map['amount'] is num) ? (map['amount'] as num).toDouble() : 0.0,
-      paymentStatus: map['paymentStatus'] ?? 'Cash',
-      customerName: map['customerName'] ?? '',
+      isCredit: map['isCredit'] ?? false,
       isCompleted: map['isCompleted'] ?? false,
-      date: parsedDate,
+      debtorName: map['debtorName'],
+      debtorPhone: map['debtorPhone'],
     );
   }
 }
