@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "770447270638",
+    "project_id": "waruna-transport",
+    "storage_bucket": "waruna-transport.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:770447270638:android:b1d02f4a16a7e0061309ff",
+        "android_client_info": {
+          "package_name": "com.example.waruna_transport"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtDkWFRllLIDX_0CrBLTSP5g7oBCMHXL8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
