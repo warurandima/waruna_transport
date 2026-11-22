@@ -5,11 +5,13 @@ import 'package:provider/provider.dart';
 import 'providers/app_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/splash_screen.dart';
+import 'services/notification_service.dart';
 import 'utils/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await NotificationService().init();
   runApp(
     MultiProvider(
       providers: [

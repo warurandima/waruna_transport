@@ -3,6 +3,7 @@ import '../models/order_model.dart';
 import '../models/expense_model.dart';
 import '../models/debtor_model.dart';
 import '../models/service_model.dart';
+import '../models/reminder_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -18,6 +19,9 @@ class FirestoreService {
 
   CollectionReference<Map<String, dynamic>> get _serviceCollection =>
       _firestore.collection('service_info');
+
+  CollectionReference<Map<String, dynamic>> get _remindersCollection =>
+      _firestore.collection('order_reminders');
 
   // --- ORDERS ---
   Future<void> addOrder(OrderModel order) async {
@@ -176,5 +180,34 @@ class FirestoreService {
       nextServiceDate: nextServiceDate,
     );
     await _serviceCollection.doc('default').set(model.toMap());
+  }
+
+  // --- ORDER REMINDERS ---
+  Future<void> addReminder(ReminderModel reminder) async {
+    final docRef = _remindersCollection.doc();
+    final newReminder = ReminderModel(
+      id: docRef.id,
+      targetDate: reminder.targetDate,
+      customerName: reminder.customerName,
+      materialType: reminder.materialType,
+      quantity: reminder.quantity,
+      isCompleted: reminder.isCompleted,
+    );
+    await docRef.set(newReminder.toMap());
+  }
+
+  Stream<List<ReminderModel>> getReminders() {
+    return _remindersCollection
+        .orderBy('targetDate', descending: false)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => ReminderModel.fromMap(doc.data(), doc.id))
+              .toList();
+        });
+  }
+
+  Future<void> toggleReminderCompletion(String id, bool status) async {
+    await _remindersCollection.doc(id).update({'isCompleted': status});
   }
 }

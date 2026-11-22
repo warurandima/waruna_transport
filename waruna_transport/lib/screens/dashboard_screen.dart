@@ -5,13 +5,16 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../models/order_model.dart';
 import '../models/expense_model.dart';
 import '../models/service_model.dart';
+import '../models/reminder_model.dart';
 import '../services/firestore_service.dart';
 import '../services/pdf_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/page_transitions.dart';
 import 'add_order_screen.dart';
 import 'add_expense_screen.dart';
+import 'add_reminder_screen.dart';
 import 'debtors_screen.dart';
+import 'reminders_screen.dart';
 import 'reset_pin_screen.dart';
 import 'settings_screen.dart';
 
@@ -90,6 +93,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _buildHomeTab(),
           _buildOrdersTab(),
           _buildExpensesTab(),
+          const RemindersScreen(),
           const DebtorsScreen(),
         ],
       ),
@@ -116,6 +120,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.attach_money),
             label: 'වියදම්',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.alarm),
+            label: 'මතක් කිරීම්',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.people), label: 'ණය'),
         ],
@@ -150,6 +158,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: const Icon(Icons.add, color: Colors.white),
               label: Text(
                 'නව වියදමක්',
+                style: GoogleFonts.notoSansSinhala(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack)
+          : _selectedIndex == 3
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  SlideFadePageRoute(page: const AddReminderScreen()),
+                );
+              },
+              backgroundColor: AppColors.primaryColor,
+              icon: const Icon(Icons.add_alarm, color: Colors.white),
+              label: Text(
+                'නව මතක් කිරීමක්',
                 style: GoogleFonts.notoSansSinhala(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -256,6 +282,116 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ],
                         ),
+                      );
+                    },
+                  ),
+
+                  // Tomorrow's Orders Reminder Card
+                  StreamBuilder<List<ReminderModel>>(
+                    stream: _firestoreService.getReminders(),
+                    builder: (context, snapshot) {
+                      final allReminders = snapshot.data ?? [];
+                      final tomorrow = DateTime.now().add(
+                        const Duration(days: 1),
+                      );
+                      final tomorrowReminders = allReminders.where((r) {
+                        return r.targetDate.year == tomorrow.year &&
+                            r.targetDate.month == tomorrow.month &&
+                            r.targetDate.day == tomorrow.day;
+                      }).toList();
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: Colors.blue.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    radius: 16,
+                                    child: const Icon(
+                                      Icons.calendar_today,
+                                      color: Colors.blueAccent,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'හෙට දිනට නියමිත ඇණවුම්',
+                                    style: GoogleFonts.notoSansSinhala(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.secondaryColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Divider(height: 20),
+                              if (tomorrowReminders.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4.0,
+                                  ),
+                                  child: Text(
+                                    'හෙට දිනට ඇණවුම් නොමැත.',
+                                    style: GoogleFonts.notoSansSinhala(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                )
+                              else
+                                ...tomorrowReminders.map(
+                                  (r) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4.0,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          r.isCompleted
+                                              ? Icons.check_circle
+                                              : Icons.arrow_right,
+                                          color: r.isCompleted
+                                              ? Colors.green
+                                              : AppColors.primaryColor,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            '${r.customerName} - ${r.materialType} (${r.quantity})',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              decoration: r.isCompleted
+                                                  ? TextDecoration.lineThrough
+                                                  : null,
+                                              color: r.isCompleted
+                                                  ? Colors.grey
+                                                  : null,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ).animate().scale(
+                        duration: 400.ms,
+                        curve: Curves.easeOutBack,
                       );
                     },
                   ),
