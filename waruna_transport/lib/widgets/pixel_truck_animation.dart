@@ -15,7 +15,7 @@ class _PixelTruckAnimationState extends State<PixelTruckAnimation>
   late Animation<Offset> _slideAnimation;
   late Animation<double> _bedAngleAnimation;
 
-  // Particle offsets and colors
+  // Particle offsets, colors and sizes (19 particles for realistic granular discharge)
   final List<_PixelParticle> _particles = const [
     _PixelParticle(dx: -12, dy: 8, color: Color(0xFFF1C40F), size: 10),
     _PixelParticle(dx: -20, dy: 14, color: Color(0xFFF39C12), size: 8),
@@ -25,6 +25,17 @@ class _PixelTruckAnimationState extends State<PixelTruckAnimation>
     _PixelParticle(dx: -24, dy: 26, color: Color(0xFFF1C40F), size: 8),
     _PixelParticle(dx: -4, dy: 16, color: Color(0xFF7F8C8D), size: 10),
     _PixelParticle(dx: -32, dy: 20, color: Color(0xFFD35400), size: 9),
+    _PixelParticle(dx: -10, dy: 10, color: Color(0xFFF39C12), size: 10),
+    _PixelParticle(dx: -18, dy: 30, color: Color(0xFFE67E22), size: 8),
+    _PixelParticle(dx: -26, dy: 12, color: Color(0xFFBDC3C7), size: 9),
+    _PixelParticle(dx: -6, dy: 28, color: Color(0xFFF1C40F), size: 7),
+    _PixelParticle(dx: -22, dy: 4, color: Color(0xFF95A5A6), size: 10),
+    _PixelParticle(dx: -14, dy: 34, color: Color(0xFFD35400), size: 8),
+    _PixelParticle(dx: -30, dy: 16, color: Color(0xFF7F8C8D), size: 9),
+    _PixelParticle(dx: -2, dy: 24, color: Color(0xFFF1C40F), size: 11),
+    _PixelParticle(dx: -15, dy: 40, color: Color(0xFFF39C12), size: 7),
+    _PixelParticle(dx: -27, dy: 32, color: Color(0xFFE67E22), size: 9),
+    _PixelParticle(dx: -9, dy: 36, color: Color(0xFFBDC3C7), size: 8),
   ];
 
   @override
@@ -36,7 +47,7 @@ class _PixelTruckAnimationState extends State<PixelTruckAnimation>
     );
 
     // 1. (0.0 - 0.3): Slide in from Offset(-1.5, 0) to Offset(0, 0)
-    // 5. (0.8 - 1.0): Slide out to Offset(1.5, 0)
+    // 5. (0.8 - 1.0): Slide out to Offset(1.6, 0) with smooth acceleration
     _slideAnimation = TweenSequence<Offset>([
       TweenSequenceItem(
         tween: Tween<Offset>(
@@ -49,8 +60,8 @@ class _PixelTruckAnimationState extends State<PixelTruckAnimation>
       TweenSequenceItem(
         tween: Tween<Offset>(
           begin: Offset.zero,
-          end: const Offset(1.5, 0.0),
-        ).chain(CurveTween(curve: Curves.easeInCubic)),
+          end: const Offset(1.6, 0.0),
+        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
         weight: 20,
       ),
     ]).animate(_controller);
@@ -91,119 +102,136 @@ class _PixelTruckAnimationState extends State<PixelTruckAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final t = _controller.value;
-
-        // Calculate wheel rotation
-        double wheelAngle = 0.0;
-        if (t <= 0.3) {
-          wheelAngle = (t / 0.3) * 6 * math.pi;
-        } else if (t >= 0.8) {
-          wheelAngle = ((t - 0.8) / 0.2) * 6 * math.pi;
-        }
-
-        // 3. (0.4 - 0.7): Sand particles falling
-        final showParticles = t >= 0.4 && t <= 0.7;
-        final particleProgress = showParticles
-            ? ((t - 0.4) / 0.3).clamp(0.0, 1.0)
-            : 0.0;
-
-        return SlideTransition(
-          position: _slideAnimation,
-          child: SizedBox(
-            width: 220,
-            height: 160,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // Ground road line (retro 8-bit dashed curb)
-                Positioned(
-                  bottom: 12,
-                  left: -40,
-                  right: -40,
-                  child: Row(
-                    children: List.generate(
-                      15,
-                      (i) => Container(
-                        width: 14,
-                        height: 3,
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        color: Colors.white.withValues(alpha: 0.25),
-                      ),
-                    ),
-                  ),
+    return SizedBox(
+      width: 260,
+      height: 160,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          // Ground road line (retro 8-bit dashed curb) - isolated from slide animation
+          Positioned(
+            bottom: 12,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                16,
+                (i) => Container(
+                  width: 12,
+                  height: 3,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  color: Colors.white.withValues(alpha: 0.25),
                 ),
-
-                // Sand particles falling from tipper rear during 0.4 - 0.7
-                if (showParticles)
-                  ..._particles.map((p) {
-                    final currentX = 20.0 + p.dx - (particleProgress * 35);
-                    final currentY =
-                        55.0 +
-                        p.dy +
-                        (particleProgress * particleProgress * 85);
-                    final opacity = (1.0 - particleProgress).clamp(0.0, 1.0);
-
-                    return Positioned(
-                      left: currentX,
-                      top: currentY,
-                      child: Opacity(
-                        opacity: opacity,
-                        child: Container(
-                          width: p.size,
-                          height: p.size,
-                          decoration: BoxDecoration(
-                            color: p.color,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.3),
-                                blurRadius: 1,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-
-                // Pixel Tipper Bed (Rotating)
-                Positioned(
-                  left: 20,
-                  bottom: 30,
-                  child: Transform.rotate(
-                    angle: _bedAngleAnimation.value,
-                    alignment: Alignment.bottomLeft, // Hinge at rear bottom
-                    child: _buildPixelTipperBed(showSand: t < 0.55),
-                  ),
-                ),
-
-                // Pixel Truck Cabin & Chassis
-                Positioned(
-                  left: 20,
-                  bottom: 22,
-                  child: _buildPixelCabinAndChassis(),
-                ),
-
-                // Rear Wheel (Pixel style)
-                Positioned(
-                  left: 45,
-                  bottom: 12,
-                  child: _buildPixelWheel(wheelAngle),
-                ),
-
-                // Front Wheel (Pixel style)
-                Positioned(
-                  left: 142,
-                  bottom: 12,
-                  child: _buildPixelWheel(wheelAngle),
-                ),
-              ],
+              ),
             ),
           ),
-        );
-      },
+
+          // Sliding truck & unloading elements
+          SlideTransition(
+            position: _slideAnimation,
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                final t = _controller.value;
+
+                // Calculate wheel rotation based on movement
+                double wheelAngle = 0.0;
+                if (t <= 0.3) {
+                  wheelAngle = (t / 0.3) * 6 * math.pi;
+                } else if (t >= 0.8) {
+                  wheelAngle = ((t - 0.8) / 0.2) * 6 * math.pi;
+                }
+
+                // 3. (0.4 - 0.7): Sand particles falling with easeOut curve
+                final showParticles = t >= 0.4 && t <= 0.7;
+                final rawProgress = showParticles
+                    ? ((t - 0.4) / 0.3).clamp(0.0, 1.0)
+                    : 0.0;
+                final particleProgress = Curves.easeOut.transform(rawProgress);
+                final opacity = Curves.easeOut
+                    .transform(1.0 - rawProgress)
+                    .clamp(0.0, 1.0);
+
+                return SizedBox(
+                  width: 220,
+                  height: 160,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Sand particles falling from tipper rear during 0.4 - 0.7
+                      if (showParticles)
+                        ..._particles.map((p) {
+                          final currentX =
+                              20.0 + p.dx - (particleProgress * 30);
+                          final currentY =
+                              55.0 + p.dy + (particleProgress * 95);
+
+                          return Positioned(
+                            left: currentX,
+                            top: currentY,
+                            child: Opacity(
+                              opacity: opacity,
+                              child: Container(
+                                width: p.size,
+                                height: p.size,
+                                decoration: BoxDecoration(
+                                  color: p.color,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      blurRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+
+                      // Pixel Tipper Bed (Rotating)
+                      Positioned(
+                        left: 20,
+                        bottom: 30,
+                        child: Transform.rotate(
+                          angle: _bedAngleAnimation.value,
+                          alignment:
+                              Alignment.bottomLeft, // Hinge at rear bottom
+                          child: _buildPixelTipperBed(showSand: t < 0.55),
+                        ),
+                      ),
+
+                      // Pixel Truck Cabin & Chassis
+                      Positioned(
+                        left: 20,
+                        bottom: 22,
+                        child: _buildPixelCabinAndChassis(),
+                      ),
+
+                      // Rear Wheel (Pixel style)
+                      Positioned(
+                        left: 45,
+                        bottom: 12,
+                        child: _buildPixelWheel(wheelAngle),
+                      ),
+
+                      // Front Wheel (Pixel style)
+                      Positioned(
+                        left: 142,
+                        bottom: 12,
+                        child: _buildPixelWheel(wheelAngle),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 

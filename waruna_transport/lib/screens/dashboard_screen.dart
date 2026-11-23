@@ -741,21 +741,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         title: Text(
           order.materialType,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_dateFormat.format(order.date)),
+            Text(
+              _dateFormat.format(order.date),
+              overflow: TextOverflow.ellipsis,
+            ),
             if (order.debtorName != null && order.debtorName!.isNotEmpty)
-              Text('පාරිභෝගිකයා: ${order.debtorName}'),
-            Row(
+              Text(
+                'පාරිභෝගිකයා: ${order.debtorName}',
+                overflow: TextOverflow.ellipsis,
+              ),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8.0,
+              runSpacing: 4.0,
               children: [
                 Container(
-                  margin: const EdgeInsets.only(top: 4, right: 6),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
+                    horizontal: 8,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
                     color: order.isCredit
@@ -775,10 +784,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 Container(
-                  margin: const EdgeInsets.only(top: 4),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
+                    horizontal: 8,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
                     color: order.isCompleted
@@ -801,7 +809,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        trailing: Row(
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
@@ -811,17 +821,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: order.isCredit
                     ? Colors.orange.shade800
                     : AppColors.primaryColor,
-                fontSize: 16,
+                fontSize: 15,
               ),
             ),
             if (!order.isCompleted)
-              IconButton(
-                icon: const Icon(
-                  Icons.check_circle_outline,
-                  color: Colors.teal,
-                ),
-                tooltip: 'සම්පූර්ණයි ලෙස සලකුණු කරන්න',
-                onPressed: () async {
+              InkWell(
+                onTap: () async {
                   await _firestoreService.markOrderCompleted(order.id);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -832,6 +837,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     );
                   }
                 },
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 3.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.teal,
+                        size: 14,
+                      ),
+                      SizedBox(width: 3),
+                      Text(
+                        'සම්පූර්ණ කරන්න',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.teal,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
           ],
         ),

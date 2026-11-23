@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waruna_transport/main.dart';
 import 'package:waruna_transport/providers/app_provider.dart';
 import 'package:waruna_transport/providers/theme_provider.dart';
+import 'package:waruna_transport/widgets/pixel_truck_animation.dart';
 
 void main() {
   setUp(() {
@@ -23,7 +24,7 @@ void main() {
       ),
     );
 
-    expect(find.text('WARUNA TRANSPORT'), findsOneWidget);
+    expect(find.byType(PixelTruckAnimation), findsOneWidget);
 
     // Advance past the 5.5-second splash animation and 800ms page transition
     await tester.pump(const Duration(milliseconds: 5500));
