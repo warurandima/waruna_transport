@@ -195,12 +195,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       duration: 400.ms,
                       curve: Curves.easeOutBack,
                     ),
-                const SizedBox(height: 16),
-                Text(
-                  'පෙරනිමි PIN අංකය: 0000',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                ).animate().fade(delay: 750.ms, duration: 600.ms),
               ],
             ),
           ),

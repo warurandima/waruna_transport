@@ -25,8 +25,8 @@ void main() {
 
     expect(find.text('WARUNA TRANSPORT'), findsOneWidget);
 
-    // Advance past the 5-second splash animation and 800ms page transition
-    await tester.pump(const Duration(seconds: 5));
+    // Advance past the 5.5-second splash animation and 800ms page transition
+    await tester.pump(const Duration(milliseconds: 5500));
     await tester.pump(const Duration(milliseconds: 800));
     await tester.pumpAndSettle();
 
