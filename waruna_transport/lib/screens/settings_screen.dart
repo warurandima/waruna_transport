@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/service_model.dart';
 import '../providers/theme_provider.dart';
 import '../services/firestore_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/page_transitions.dart';
+import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -216,36 +219,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'අවසන් සර්විස් දිනය:',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'අවසන් සර්විස් දිනය:',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  _dateFormat.format(lastDate),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                  Text(
+                                    _dateFormat.format(lastDate),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
+                            const SizedBox(width: 8),
                             ElevatedButton.icon(
                               onPressed: _isSavingService
                                   ? null
                                   : () => _pickLastServiceDate(lastDate),
-                              icon: const Icon(Icons.edit_calendar),
+                              icon: const Icon(Icons.edit_calendar, size: 18),
                               label: Text(
-                                'දිනය වෙනස් කරන්න',
-                                style: GoogleFonts.notoSansSinhala(),
+                                'වෙනස් කරන්න',
+                                style: GoogleFonts.notoSansSinhala(
+                                  fontSize: 13,
+                                ),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primaryColor,
                                 foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                               ),
                             ),
                           ],
@@ -255,6 +267,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 );
               },
+            ),
+            const SizedBox(height: 24),
+
+            // Logout Section
+            Text(
+              'ගිණුම (Account)',
+              style: GoogleFonts.notoSansSinhala(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 2,
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFFEBEE),
+                  child: Icon(Icons.logout, color: Colors.red),
+                ),
+                title: Text(
+                  'ලොග් අවුට් වන්න (Logout)',
+                  style: GoogleFonts.notoSansSinhala(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+                subtitle: const Text('යෙදුමෙන් පිටවීම'),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.red,
+                ),
+                onTap: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text(
+                        'ලොග් අවුට් වන්නද?',
+                        style: GoogleFonts.notoSansSinhala(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      content: Text(
+                        'ඔබට නැවත ඇතුල් වීමට PIN අංකය භාවිතා කිරීමට සිදුවේ.',
+                        style: GoogleFonts.notoSansSinhala(),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('අවලංගු කරන්න'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('ලොග් අවුට්'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true) {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.clear();
+                    if (!context.mounted) return;
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      SlideFadePageRoute(page: const LoginScreen()),
+                      (route) => false,
+                    );
+                  }
+                },
+              ),
             ),
           ],
         ),

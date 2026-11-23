@@ -52,11 +52,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            const Text(
-              'Waruna Transport',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+            const Flexible(
+              child: Text(
+                'Waruna Transport',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -100,6 +103,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         type: BottomNavigationBarType.fixed,
+        selectedFontSize: 12,
+        unselectedFontSize: 11,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
@@ -325,12 +330,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 10),
-                                  Text(
-                                    'හෙට දිනට නියමිත ඇණවුම්',
-                                    style: GoogleFonts.notoSansSinhala(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.secondaryColor,
+                                  Expanded(
+                                    child: Text(
+                                      'හෙට දිනට නියමිත ඇණවුම්',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.notoSansSinhala(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.secondaryColor,
+                                      ),
                                     ),
                                   ),
                                 ],

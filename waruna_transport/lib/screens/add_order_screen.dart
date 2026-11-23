@@ -14,11 +14,18 @@ class AddOrderScreen extends StatefulWidget {
 class _AddOrderScreenState extends State<AddOrderScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
+  final _customMaterialController = TextEditingController();
   final _debtorNameController = TextEditingController();
   final _debtorPhoneController = TextEditingController();
   final _firestoreService = FirestoreService();
 
-  final List<String> _materials = const ['වැලි', 'ගල්', 'ගඩොල්', 'සිමෙන්ති'];
+  final List<String> _materials = const [
+    'වැලි',
+    'ගල්',
+    'ගඩොල්',
+    'සිමෙන්ති',
+    'වෙනත්',
+  ];
   String _selectedMaterial = 'වැලි';
   bool _isCredit = false;
   bool _isSaving = false;
@@ -26,6 +33,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   @override
   void dispose() {
     _amountController.dispose();
+    _customMaterialController.dispose();
     _debtorNameController.dispose();
     _debtorPhoneController.dispose();
     super.dispose();
@@ -52,10 +60,14 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     });
 
     try {
+      final finalMaterial = _selectedMaterial == 'වෙනත්'
+          ? _customMaterialController.text.trim()
+          : _selectedMaterial;
+
       final order = OrderModel(
         id: '',
         date: DateTime.now(),
-        materialType: _selectedMaterial,
+        materialType: finalMaterial,
         amount: amount,
         isCredit: _isCredit,
         isCompleted: false,
@@ -145,6 +157,26 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                           }
                         },
                       ),
+                      if (_selectedMaterial == 'වෙනත්') ...[
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _customMaterialController,
+                          decoration: InputDecoration(
+                            labelText: 'ද්‍රව්‍යයේ නම (Custom Material Name)',
+                            prefixIcon: const Icon(Icons.edit_note),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (_selectedMaterial == 'වෙනත්' &&
+                                (value == null || value.trim().isEmpty)) {
+                              return 'කරුණාකර ද්‍රව්‍යයේ නම ඇතුලත් කරන්න';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _amountController,

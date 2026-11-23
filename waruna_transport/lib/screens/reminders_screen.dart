@@ -126,14 +126,16 @@ class RemindersScreen extends StatelessWidget {
                                       : AppColors.primaryColor,
                                 ),
                                 const SizedBox(width: 4),
-                                Text(
-                                  dateFormat.format(reminder.targetDate),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDone
-                                        ? Colors.grey
-                                        : AppColors.primaryColor,
+                                Expanded(
+                                  child: Text(
+                                    dateFormat.format(reminder.targetDate),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDone
+                                          ? Colors.grey
+                                          : AppColors.primaryColor,
+                                    ),
                                   ),
                                 ),
                               ],

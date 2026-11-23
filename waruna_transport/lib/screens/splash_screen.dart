@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../utils/app_colors.dart';
 import 'login_screen.dart';
 
@@ -314,15 +315,30 @@ class _SplashScreenState extends State<SplashScreen>
                   angle: truckAngle,
                   alignment:
                       Alignment.bottomRight, // Tilt backwards like a dump truck
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      height: 150,
-                      width: 150,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
+                  child:
+                      ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              height: 150,
+                              width: 150,
+                              filterQuality: FilterQuality.high,
+                              fit: BoxFit.contain,
+                            ),
+                          )
+                          .animate()
+                          .slideX(
+                            begin: -1,
+                            end: 0,
+                            duration: 800.ms,
+                            curve: Curves.easeOut,
+                          )
+                          .shimmer(duration: 1200.ms)
+                          .shake(
+                            hz: 4,
+                            curve: Curves.easeInOutCubic,
+                            duration: 1000.ms,
+                          ),
                 ),
               ),
 

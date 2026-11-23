@@ -326,21 +326,27 @@ class _DebtorDetailScreenState extends State<DebtorDetailScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'හිඟ මුදල (Total Due):',
-                              style: GoogleFonts.notoSansSinhala(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            Expanded(
+                              child: Text(
+                                'හිඟ මුදල (Total Due):',
+                                style: GoogleFonts.notoSansSinhala(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                            Text(
-                              _currencyFormat.format(debtor.totalDue),
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: debtor.totalDue > 0
-                                    ? Colors.red
-                                    : Colors.green,
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                _currencyFormat.format(debtor.totalDue),
+                                textAlign: TextAlign.end,
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: debtor.totalDue > 0
+                                      ? Colors.red
+                                      : Colors.green,
+                                ),
                               ),
                             ),
                           ],
@@ -369,6 +375,7 @@ class _DebtorDetailScreenState extends State<DebtorDetailScreen> {
                           ),
                           const SizedBox(height: 12),
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               Expanded(
                                 child: TextField(
@@ -379,6 +386,10 @@ class _DebtorDetailScreenState extends State<DebtorDetailScreen> {
                                       ),
                                   decoration: InputDecoration(
                                     labelText: 'ගෙවන මුදල (රු.)',
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 14,
+                                    ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -414,6 +425,7 @@ class _DebtorDetailScreenState extends State<DebtorDetailScreen> {
                                         'ගෙවන්න',
                                         style: GoogleFonts.notoSansSinhala(
                                           fontWeight: FontWeight.bold,
+                                          fontSize: 15,
                                         ),
                                       ),
                               ),

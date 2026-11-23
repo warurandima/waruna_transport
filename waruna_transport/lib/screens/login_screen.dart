@@ -24,8 +24,8 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
-    final enteredPin = _pinController.text.trim();
+  Future<void> _submitPin(String pin) async {
+    final enteredPin = pin.trim();
     if (enteredPin.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -35,6 +35,8 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       return;
     }
+
+    if (_isLoading) return;
 
     setState(() {
       _isLoading = true;
@@ -54,6 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
         SlideFadePageRoute(page: const DashboardScreen()),
       );
     } else {
+      _pinController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('වැරදි PIN අංකයකි'),
@@ -143,14 +146,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                      onFieldSubmitted: (_) => _handleLogin(),
+                      onChanged: (value) {
+                        if (value.length == 4) {
+                          _submitPin(value);
+                        }
+                      },
+                      onFieldSubmitted: (value) => _submitPin(value),
                     )
                     .animate()
                     .fade(delay: 450.ms, duration: 600.ms)
                     .slideY(begin: 0.3, curve: Curves.easeOutCubic),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                      onPressed: _isLoading ? null : _handleLogin,
+                      onPressed: _isLoading
+                          ? null
+                          : () => _submitPin(_pinController.text),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryColor,
                         foregroundColor: Colors.white,
