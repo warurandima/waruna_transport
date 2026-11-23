@@ -5,6 +5,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../models/reminder_model.dart';
 import '../services/firestore_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/page_transitions.dart';
+import 'add_reminder_screen.dart';
 
 class RemindersScreen extends StatefulWidget {
   const RemindersScreen({super.key});
@@ -261,6 +263,59 @@ class _RemindersScreenState extends State<RemindersScreen> {
                                       ],
                                     ),
                                   ),
+                                  trailing: PopupMenuButton<String>(
+                                    icon: const Icon(
+                                      Icons.more_vert,
+                                      size: 20,
+                                      color: Colors.grey,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onSelected: (val) {
+                                      if (val == 'edit') {
+                                        Navigator.push(
+                                          context,
+                                          SlideFadePageRoute(
+                                            page: AddReminderScreen(
+                                              existingReminder: reminder,
+                                            ),
+                                          ),
+                                        );
+                                      } else if (val == 'delete') {
+                                        _confirmDeleteReminder(reminder);
+                                      }
+                                    },
+                                    itemBuilder: (ctx) => [
+                                      const PopupMenuItem(
+                                        value: 'edit',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.edit,
+                                              size: 18,
+                                              color: Colors.blue,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text('සංස්කරණය'),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.delete,
+                                              size: 18,
+                                              color: Colors.red,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text('මකන්න'),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               )
                               .animate()
@@ -277,6 +332,47 @@ class _RemindersScreenState extends State<RemindersScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  void _confirmDeleteReminder(ReminderModel reminder) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'මතක් කිරීම මකා දැමීම',
+          style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'මෙම මතක් කිරීම (${reminder.customerName} - ${reminder.materialType}) මකා දැමීමට ඔබට විශ්වාසද?',
+          style: GoogleFonts.notoSansSinhala(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('අවලංගු කරන්න', style: GoogleFonts.notoSansSinhala()),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await _firestoreService.deleteReminder(reminder.id);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('මතක් කිරීම මකා දමන ලදී'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: Text(
+              'මකන්න',
+              style: GoogleFonts.notoSansSinhala(color: Colors.white),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -14,6 +14,7 @@ import 'add_order_screen.dart';
 import 'add_expense_screen.dart';
 import 'add_reminder_screen.dart';
 import 'bank_details_screen.dart';
+import 'maintenance_calendar_screen.dart';
 import 'debtors_screen.dart';
 import 'reminders_screen.dart';
 import 'reset_pin_screen.dart';
@@ -273,6 +274,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Navigator.push(
                   context,
                   SlideFadePageRoute(page: const BankDetailsScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.calendar_month,
+                color: Colors.orangeAccent,
+              ),
+              title: Text(
+                'නඩත්තු කැලැන්ඩරය (Maintenance Calendar)',
+                style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  SlideFadePageRoute(page: const MaintenanceCalendarScreen()),
                 );
               },
             ),
@@ -1010,6 +1028,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           filteredExpenses = rawExpenses
               .where((e) => e.type == 'නඩත්තු' || e.type == 'Maintenance')
               .toList();
+        } else if (_expenseFilter == 'ටයර්') {
+          filteredExpenses = rawExpenses
+              .where((e) => e.type == 'ටයර්' || e.type == 'Tire')
+              .toList();
         } else if (_expenseFilter == 'වෙනත්') {
           filteredExpenses = rawExpenses
               .where(
@@ -1017,7 +1039,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     e.type != 'තෙල්' &&
                     e.type != 'Fuel' &&
                     e.type != 'නඩත්තු' &&
-                    e.type != 'Maintenance',
+                    e.type != 'Maintenance' &&
+                    e.type != 'ටයර්' &&
+                    e.type != 'Tire',
               )
               .toList();
         }
@@ -1032,7 +1056,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
-                children: ['සියල්ල', 'තෙල්', 'නඩත්තු', 'වෙනත්'].map((filter) {
+                children: ['සියල්ල', 'තෙල්', 'නඩත්තු', 'ටයර්', 'වෙනත්'].map((
+                  filter,
+                ) {
                   final isSelected = _expenseFilter == filter;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
@@ -1148,13 +1174,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ],
                                 ),
-                                trailing: Text(
-                                  _currencyFormat.format(expense.amount),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red,
-                                    fontSize: 16,
-                                  ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _currencyFormat.format(expense.amount),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    PopupMenuButton<String>(
+                                      icon: const Icon(
+                                        Icons.more_vert,
+                                        size: 20,
+                                        color: Colors.grey,
+                                      ),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onSelected: (val) {
+                                        if (val == 'edit') {
+                                          Navigator.push(
+                                            context,
+                                            SlideFadePageRoute(
+                                              page: AddExpenseScreen(
+                                                existingExpense: expense,
+                                              ),
+                                            ),
+                                          );
+                                        } else if (val == 'delete') {
+                                          _confirmDeleteExpense(expense.id);
+                                        }
+                                      },
+                                      itemBuilder: (ctx) => [
+                                        const PopupMenuItem(
+                                          value: 'edit',
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.edit,
+                                                size: 18,
+                                                color: Colors.blue,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text('සංස්කරණය'),
+                                            ],
+                                          ),
+                                        ),
+                                        const PopupMenuItem(
+                                          value: 'delete',
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.delete,
+                                                size: 18,
+                                                color: Colors.red,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text('මකන්න'),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             )
@@ -1259,60 +1343,186 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
+        trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              _currencyFormat.format(order.amount),
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: order.isCredit
-                    ? Colors.orange.shade800
-                    : AppColors.primaryColor,
-                fontSize: 15,
-              ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _currencyFormat.format(order.amount),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: order.isCredit
+                        ? Colors.orange.shade800
+                        : AppColors.primaryColor,
+                    fontSize: 15,
+                  ),
+                ),
+                if (!order.isCompleted)
+                  InkWell(
+                    onTap: () async {
+                      await _firestoreService.markOrderCompleted(order.id);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('ඇණවුම සම්පූර්ණ කරන ලදී'),
+                            backgroundColor: Colors.teal,
+                          ),
+                        );
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 3.0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(
+                            Icons.check_circle_outline,
+                            color: Colors.teal,
+                            size: 14,
+                          ),
+                          SizedBox(width: 3),
+                          Text(
+                            'සම්පූර්ණ කරන්න',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.teal,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            if (!order.isCompleted)
-              InkWell(
-                onTap: () async {
-                  await _firestoreService.markOrderCompleted(order.id);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('ඇණවුම සම්පූර්ණ කරන ලදී'),
-                        backgroundColor: Colors.teal,
-                      ),
-                    );
-                  }
-                },
-                borderRadius: BorderRadius.circular(4),
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 3.0),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onSelected: (val) {
+                if (val == 'edit') {
+                  Navigator.push(
+                    context,
+                    SlideFadePageRoute(
+                      page: AddOrderScreen(existingOrder: order),
+                    ),
+                  );
+                } else if (val == 'delete') {
+                  _confirmDeleteOrder(order);
+                }
+              },
+              itemBuilder: (ctx) => [
+                const PopupMenuItem(
+                  value: 'edit',
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(
-                        Icons.check_circle_outline,
-                        color: Colors.teal,
-                        size: 14,
-                      ),
-                      SizedBox(width: 3),
-                      Text(
-                        'සම්පූර්ණ කරන්න',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.teal,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    children: [
+                      Icon(Icons.edit, size: 18, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text('සංස්කරණය'),
                     ],
                   ),
                 ),
-              ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 18, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('මකන්න'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmDeleteOrder(OrderModel order) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'ඇණවුම මකා දැමීම',
+          style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'මෙම ඇණවුම (${order.materialType} - ${_currencyFormat.format(order.amount)}) මකා දැමීමට ඔබට විශ්වාසද?',
+          style: GoogleFonts.notoSansSinhala(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('අවලංගු කරන්න', style: GoogleFonts.notoSansSinhala()),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await _firestoreService.deleteOrder(order);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('ඇණවුම මකා දමන ලදී'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: Text(
+              'මකන්න',
+              style: GoogleFonts.notoSansSinhala(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteExpense(String id) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'වියදම මකා දැමීම',
+          style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'මෙම වියදම් සටහන මකා දැමීමට ඔබට විශ්වාසද?',
+          style: GoogleFonts.notoSansSinhala(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('අවලංගු කරන්න', style: GoogleFonts.notoSansSinhala()),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await _firestoreService.deleteExpense(id);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('වියදම මකා දමන ලදී'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: Text(
+              'මකන්න',
+              style: GoogleFonts.notoSansSinhala(color: Colors.white),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -101,6 +101,91 @@ class FirestoreService {
     await _ordersCollection.doc(orderId).update({'isCompleted': true});
   }
 
+  Future<void> updateOrder(OrderModel newOrder, {OrderModel? oldOrder}) async {
+    await _ordersCollection.doc(newOrder.id).update(newOrder.toMap());
+
+    // Reconcile debtor balance if credit status, debtor, or amount changed
+    if (oldOrder != null) {
+      // 1. Revert old credit from previous debtor if it was credit
+      if (oldOrder.isCredit &&
+          oldOrder.debtorPhone != null &&
+          oldOrder.debtorPhone!.trim().isNotEmpty) {
+        final oldPhone = oldOrder.debtorPhone!.trim();
+        final debtorDoc = _debtorsCollection.doc(oldPhone);
+        final snapshot = await debtorDoc.get();
+        if (snapshot.exists && snapshot.data() != null) {
+          final existing = DebtorModel.fromMap(snapshot.data()!, oldPhone);
+          final updatedDue = (existing.totalDue - oldOrder.amount).clamp(
+            0.0,
+            double.infinity,
+          );
+          await debtorDoc.update({'totalDue': updatedDue});
+        }
+      }
+    }
+
+    // 2. Apply new credit if new order is credit
+    if (newOrder.isCredit &&
+        newOrder.debtorPhone != null &&
+        newOrder.debtorPhone!.trim().isNotEmpty) {
+      final newPhone = newOrder.debtorPhone!.trim();
+      final debtorDoc = _debtorsCollection.doc(newPhone);
+      final snapshot = await debtorDoc.get();
+      if (snapshot.exists && snapshot.data() != null) {
+        final existing = DebtorModel.fromMap(snapshot.data()!, newPhone);
+        final updatedDue = existing.totalDue + newOrder.amount;
+        await debtorDoc.update({
+          'name':
+              (newOrder.debtorName != null &&
+                  newOrder.debtorName!.trim().isNotEmpty)
+              ? newOrder.debtorName!.trim()
+              : existing.name,
+          'totalDue': updatedDue,
+        });
+      } else {
+        final debtor = DebtorModel(
+          phone: newPhone,
+          name:
+              (newOrder.debtorName != null &&
+                  newOrder.debtorName!.trim().isNotEmpty)
+              ? newOrder.debtorName!.trim()
+              : 'ණයගැතියා ($newPhone)',
+          totalDue: newOrder.amount,
+          transactions: [
+            {
+              'date': newOrder.date.toIso8601String(),
+              'amount': newOrder.amount,
+              'description':
+                  'ඇණවුම: ${newOrder.materialType} (Order: ${newOrder.materialType})',
+            },
+          ],
+        );
+        await debtorDoc.set(debtor.toMap());
+      }
+    }
+  }
+
+  Future<void> deleteOrder(OrderModel order) async {
+    await _ordersCollection.doc(order.id).delete();
+
+    // If order was credit, reduce the debtor's balance
+    if (order.isCredit &&
+        order.debtorPhone != null &&
+        order.debtorPhone!.trim().isNotEmpty) {
+      final phone = order.debtorPhone!.trim();
+      final debtorDoc = _debtorsCollection.doc(phone);
+      final snapshot = await debtorDoc.get();
+      if (snapshot.exists && snapshot.data() != null) {
+        final existing = DebtorModel.fromMap(snapshot.data()!, phone);
+        final updatedDue = (existing.totalDue - order.amount).clamp(
+          0.0,
+          double.infinity,
+        );
+        await debtorDoc.update({'totalDue': updatedDue});
+      }
+    }
+  }
+
   // --- EXPENSES ---
   Future<void> addExpense(ExpenseModel expense) async {
     final docRef = _expensesCollection.doc();
@@ -124,6 +209,14 @@ class FirestoreService {
               .map((doc) => ExpenseModel.fromMap(doc.data(), doc.id))
               .toList();
         });
+  }
+
+  Future<void> updateExpense(ExpenseModel expense) async {
+    await _expensesCollection.doc(expense.id).update(expense.toMap());
+  }
+
+  Future<void> deleteExpense(String id) async {
+    await _expensesCollection.doc(id).delete();
   }
 
   // --- DEBTORS ---
@@ -166,6 +259,14 @@ class FirestoreService {
     });
   }
 
+  Future<void> updateDebtor(DebtorModel debtor) async {
+    await _debtorsCollection.doc(debtor.phone).update(debtor.toMap());
+  }
+
+  Future<void> deleteDebtor(String phone) async {
+    await _debtorsCollection.doc(phone).delete();
+  }
+
   // --- SERVICE INFO ---
   Stream<ServiceModel?> getServiceInfo() {
     return _serviceCollection.doc('default').snapshots().map((snapshot) {
@@ -176,12 +277,14 @@ class FirestoreService {
 
   Future<void> updateServiceInfo(
     DateTime lastServiceDate,
-    DateTime nextServiceDate,
-  ) async {
+    DateTime nextServiceDate, {
+    DateTime? lastTireChangeDate,
+  }) async {
     final model = ServiceModel(
       id: 'default',
       lastServiceDate: lastServiceDate,
       nextServiceDate: nextServiceDate,
+      lastTireChangeDate: lastTireChangeDate,
     );
     await _serviceCollection.doc('default').set(model.toMap());
   }
@@ -209,6 +312,14 @@ class FirestoreService {
               .map((doc) => ReminderModel.fromMap(doc.data(), doc.id))
               .toList();
         });
+  }
+
+  Future<void> updateReminder(ReminderModel reminder) async {
+    await _remindersCollection.doc(reminder.id).update(reminder.toMap());
+  }
+
+  Future<void> deleteReminder(String id) async {
+    await _remindersCollection.doc(id).delete();
   }
 
   Future<void> toggleReminderCompletion(String id, bool status) async {

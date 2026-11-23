@@ -22,7 +22,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _dateFormat = DateFormat('yyyy-MM-dd');
   bool _isSavingService = false;
 
-  Future<void> _pickLastServiceDate(DateTime currentLastDate) async {
+  Future<void> _pickLastServiceDate(
+    DateTime currentLastDate,
+    ServiceModel? serviceInfo,
+  ) async {
     final picked = await showDatePicker(
       context: context,
       initialDate: currentLastDate,
@@ -37,7 +40,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       try {
         final nextDate = DateTime(picked.year, picked.month + 1, picked.day);
-        await _firestoreService.updateServiceInfo(picked, nextDate);
+        await _firestoreService.updateServiceInfo(
+          picked,
+          nextDate,
+          lastTireChangeDate: serviceInfo?.lastTireChangeDate,
+        );
 
         if (!mounted) return;
 
@@ -54,6 +61,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
             content: Text('යාවත්කාලීන කිරීමේ දෝෂයක්: $e'),
             backgroundColor: Colors.red,
           ),
+        );
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSavingService = false;
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _pickLastTireDate(
+    DateTime? currentTireDate,
+    ServiceModel? serviceInfo,
+  ) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: currentTireDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _isSavingService = true;
+      });
+
+      try {
+        final lastService = serviceInfo?.lastServiceDate ?? DateTime.now();
+        final nextService =
+            serviceInfo?.nextServiceDate ??
+            DateTime(lastService.year, lastService.month + 1, lastService.day);
+        await _firestoreService.updateServiceInfo(
+          lastService,
+          nextService,
+          lastTireChangeDate: picked,
+        );
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ටයර් මාරු කළ දිනය සාර්ථකව යාවත්කාලීන කරන ලදී'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('දෝෂයක්: $e'), backgroundColor: Colors.red),
         );
       } finally {
         if (mounted) {
@@ -243,7 +300,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ElevatedButton.icon(
                               onPressed: _isSavingService
                                   ? null
-                                  : () => _pickLastServiceDate(lastDate),
+                                  : () => _pickLastServiceDate(
+                                      lastDate,
+                                      serviceInfo,
+                                    ),
                               icon: const Icon(Icons.edit_calendar, size: 18),
                               label: Text(
                                 'වෙනස් කරන්න',
@@ -253,6 +313,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'අවසන් වරට ටයර් මාරු කළ දිනය:',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  Text(
+                                    serviceInfo?.lastTireChangeDate != null
+                                        ? _dateFormat.format(
+                                            serviceInfo!.lastTireChangeDate!,
+                                          )
+                                        : 'සටහන් කර නැත (Not set)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          serviceInfo?.lastTireChangeDate !=
+                                              null
+                                          ? AppColors.primaryColor
+                                          : Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: _isSavingService
+                                  ? null
+                                  : () => _pickLastTireDate(
+                                      serviceInfo?.lastTireChangeDate,
+                                      serviceInfo,
+                                    ),
+                              icon: const Icon(Icons.tire_repair, size: 18),
+                              label: Text(
+                                'වෙනස් කරන්න',
+                                style: GoogleFonts.notoSansSinhala(
+                                  fontSize: 13,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange.shade800,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../models/reminder_model.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
 import '../utils/app_colors.dart';
 
 class AddReminderScreen extends StatefulWidget {
-  const AddReminderScreen({super.key});
+  final ReminderModel? existingReminder;
+
+  const AddReminderScreen({super.key, this.existingReminder});
 
   @override
   State<AddReminderScreen> createState() => _AddReminderScreenState();
@@ -26,6 +27,8 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
   String _materialType = 'වැලි (Sand)';
   bool _isLoading = false;
 
+  bool get _isEditing => widget.existingReminder != null;
+
   final List<String> _materials = [
     'වැලි (Sand)',
     'ගල් (Metal)',
@@ -37,8 +40,19 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
   @override
   void initState() {
     super.initState();
-    // Default to tomorrow
-    _selectedDate = DateTime.now().add(const Duration(days: 1));
+    if (_isEditing) {
+      final r = widget.existingReminder!;
+      _customerController.text = r.customerName;
+      _quantityController.text = r.quantity;
+      _selectedDate = r.targetDate;
+      if (_materials.contains(r.materialType)) {
+        _materialType = r.materialType;
+      } else {
+        _materialType = 'වෙනත් (Other)';
+      }
+    } else {
+      _selectedDate = DateTime.now().add(const Duration(days: 1));
+    }
   }
 
   @override
@@ -52,7 +66,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime.now(),
+      firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       helpText: 'නියමිත දිනය තෝරන්න (Select Target Date)',
       cancelText: 'අවලංගු කරන්න',
@@ -73,25 +87,49 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
     });
 
     try {
-      final reminder = ReminderModel(
-        id: '',
-        targetDate: _selectedDate,
-        customerName: _customerController.text.trim(),
-        materialType: _materialType,
-        quantity: _quantityController.text.trim(),
-        isCompleted: false,
-      );
+      if (_isEditing) {
+        final updatedReminder = ReminderModel(
+          id: widget.existingReminder!.id,
+          targetDate: _selectedDate,
+          customerName: _customerController.text.trim(),
+          materialType: _materialType,
+          quantity: _quantityController.text.trim(),
+          isCompleted: widget.existingReminder!.isCompleted,
+        );
 
-      await _firestoreService.addReminder(reminder);
-      await _notificationService.scheduleReminderNotification(reminder);
+        await _firestoreService.updateReminder(updatedReminder);
+        await _notificationService.scheduleReminderNotification(
+          updatedReminder,
+        );
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('මතක් කිරීම සාර්ථකව සටහන් කරන ලදී (Reminder Saved)'),
-          backgroundColor: Colors.green,
-        ),
-      );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('මතක් කිරීම සාර්ථකව යාවත්කාලීන කරන ලදී'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        final reminder = ReminderModel(
+          id: '',
+          targetDate: _selectedDate,
+          customerName: _customerController.text.trim(),
+          materialType: _materialType,
+          quantity: _quantityController.text.trim(),
+          isCompleted: false,
+        );
+
+        await _firestoreService.addReminder(reminder);
+        await _notificationService.scheduleReminderNotification(reminder);
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('මතක් කිරීම සාර්ථකව සටහන් කරන ලදී (Reminder Saved)'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
@@ -116,13 +154,14 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'නව මතක් කිරීමක් (New Reminder)',
+          _isEditing ? 'මතක් කිරීම සංස්කරණය' : 'නව මතක් කිරීමක් (New Reminder)',
           style: GoogleFonts.notoSansSinhala(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: AppColors.primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -133,21 +172,21 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Card(
-                elevation: 2,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
+                elevation: 2,
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Target Date Picker
                       Text(
-                        'නියමිත දිනය (Target Date)',
+                        'බෙදාහැරීමේ දිනය (Delivery Target Date)',
                         style: GoogleFonts.notoSansSinhala(
-                          fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade700,
+                          fontSize: 14,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -166,24 +205,24 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  _dateFormat.format(_selectedDate),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              Text(
+                                _dateFormat.format(_selectedDate),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                               const Icon(
-                                Icons.calendar_today,
+                                Icons.calendar_month,
                                 color: AppColors.primaryColor,
                               ),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
+
+                      // Customer Name Field
                       TextFormField(
                         controller: _customerController,
                         decoration: InputDecoration(
@@ -195,12 +234,14 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'කරුණාකර පාරිභෝගික නම ඇතුලත් කරන්න';
+                            return 'පාරිභෝගිකයාගේ නම ඇතුලත් කරන්න';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 16),
+
+                      // Material Type Dropdown
                       DropdownButtonFormField<String>(
                         initialValue: _materialType,
                         decoration: InputDecoration(
@@ -211,7 +252,10 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                           ),
                         ),
                         items: _materials.map((m) {
-                          return DropdownMenuItem(value: m, child: Text(m));
+                          return DropdownMenuItem<String>(
+                            value: m,
+                            child: Text(m),
+                          );
                         }).toList(),
                         onChanged: (val) {
                           if (val != null) {
@@ -222,19 +266,21 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
+
+                      // Quantity Field
                       TextFormField(
                         controller: _quantityController,
                         decoration: InputDecoration(
                           labelText:
-                              'ප්‍රමාණය (Quantity - e.g., 1 Trip / 2 Cubes)',
-                          prefixIcon: const Icon(Icons.scale_outlined),
+                              'ප්‍රමාණය (Quantity e.g., ලෝඩ් 1 / කියුබ් 2)',
+                          prefixIcon: const Icon(Icons.straighten),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'කරුණාකර ප්‍රමාණය ඇතුලත් කරන්න';
+                            return 'ප්‍රමාණය ඇතුලත් කරන්න';
                           }
                           return null;
                         },
@@ -244,6 +290,8 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+
+              // Submit Button
               ElevatedButton(
                 onPressed: _isLoading ? null : _saveReminder,
                 style: ElevatedButton.styleFrom(
@@ -265,13 +313,13 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                         ),
                       )
                     : Text(
-                        'මතක් කිරීම සුරකින්න (Save Reminder)',
+                        _isEditing ? 'යාවත්කාලීන කරන්න' : 'මතක් කිරීම සුරකින්න',
                         style: GoogleFonts.notoSansSinhala(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-              ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+              ),
             ],
           ),
         ),

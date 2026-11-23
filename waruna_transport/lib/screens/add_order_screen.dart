@@ -5,7 +5,9 @@ import '../services/firestore_service.dart';
 import '../utils/app_colors.dart';
 
 class AddOrderScreen extends StatefulWidget {
-  const AddOrderScreen({super.key});
+  final OrderModel? existingOrder;
+
+  const AddOrderScreen({super.key, this.existingOrder});
 
   @override
   State<AddOrderScreen> createState() => _AddOrderScreenState();
@@ -29,6 +31,26 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   String _selectedMaterial = 'වැලි';
   bool _isCredit = false;
   bool _isSaving = false;
+
+  bool get _isEditing => widget.existingOrder != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      final order = widget.existingOrder!;
+      _amountController.text = order.amount.toStringAsFixed(2);
+      if (_materials.contains(order.materialType)) {
+        _selectedMaterial = order.materialType;
+      } else {
+        _selectedMaterial = 'වෙනත්';
+        _customMaterialController.text = order.materialType;
+      }
+      _isCredit = order.isCredit;
+      _debtorNameController.text = order.debtorName ?? '';
+      _debtorPhoneController.text = order.debtorPhone ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -64,33 +86,60 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           ? _customMaterialController.text.trim()
           : _selectedMaterial;
 
-      final order = OrderModel(
-        id: '',
-        date: DateTime.now(),
-        materialType: finalMaterial,
-        amount: amount,
-        isCredit: _isCredit,
-        isCompleted: false,
-        debtorName: _isCredit ? _debtorNameController.text.trim() : null,
-        debtorPhone: _isCredit ? _debtorPhoneController.text.trim() : null,
-      );
+      if (_isEditing) {
+        final updatedOrder = OrderModel(
+          id: widget.existingOrder!.id,
+          date: widget.existingOrder!.date,
+          materialType: finalMaterial,
+          amount: amount,
+          isCredit: _isCredit,
+          isCompleted: widget.existingOrder!.isCompleted,
+          debtorName: _isCredit ? _debtorNameController.text.trim() : null,
+          debtorPhone: _isCredit ? _debtorPhoneController.text.trim() : null,
+        );
 
-      await _firestoreService.addOrder(order);
+        await _firestoreService.updateOrder(
+          updatedOrder,
+          oldOrder: widget.existingOrder,
+        );
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ඇණවුම සාර්ථකව සුරකින ලදී'),
-          backgroundColor: Colors.green,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ඇණවුම සාර්ථකව යාවත්කාලීන කරන ලදී'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        final order = OrderModel(
+          id: '',
+          date: DateTime.now(),
+          materialType: finalMaterial,
+          amount: amount,
+          isCredit: _isCredit,
+          isCompleted: false,
+          debtorName: _isCredit ? _debtorNameController.text.trim() : null,
+          debtorPhone: _isCredit ? _debtorPhoneController.text.trim() : null,
+        );
+
+        await _firestoreService.addOrder(order);
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ඇණවුම සාර්ථකව සුරකින ලදී'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('ඇණවුම සුරැකීමේදී දෝෂයක් ඇතිවිය: $e'),
+          content: Text('දෝෂයක් ඇතිවිය: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -109,13 +158,14 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'නව ඇණවුමක්',
+          _isEditing ? 'ඇණවුම සංස්කරණය (Edit Order)' : 'නව ඇණවුමක්',
           style: GoogleFonts.notoSansSinhala(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: AppColors.primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -292,7 +342,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                         ),
                       )
                     : Text(
-                        'සුරකින්න',
+                        _isEditing ? 'යාවත්කාලීන කරන්න' : 'සුරකින්න',
                         style: GoogleFonts.notoSansSinhala(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

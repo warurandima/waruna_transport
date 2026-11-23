@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/expense_model.dart';
 import '../services/firestore_service.dart';
-import '../utils/app_colors.dart';
 
 class AddExpenseScreen extends StatefulWidget {
-  const AddExpenseScreen({super.key});
+  final ExpenseModel? existingExpense;
+
+  const AddExpenseScreen({super.key, this.existingExpense});
 
   @override
   State<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -21,10 +22,37 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final List<String> _types = const [
     'තෙල් (Fuel)',
     'නඩත්තු (Maintenance)',
+    'ටයර් (Tire)',
     'වෙනත් (Other)',
   ];
   String _selectedType = 'තෙල් (Fuel)';
   bool _isSaving = false;
+
+  bool get _isEditing => widget.existingExpense != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      final expense = widget.existingExpense!;
+      _amountController.text = expense.amount.toStringAsFixed(2);
+      _noteController.text = expense.note ?? '';
+
+      final matchedType = _types.firstWhere(
+        (t) =>
+            t.toLowerCase().contains(expense.type.toLowerCase()) ||
+            expense.type.toLowerCase().contains(t.split(' ')[0].toLowerCase()),
+        orElse: () => '',
+      );
+
+      if (matchedType.isNotEmpty) {
+        _selectedType = matchedType;
+      } else {
+        _selectedType = 'වෙනත් (Other)';
+        _customTypeController.text = expense.customType ?? expense.type;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -56,35 +84,61 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
     try {
       final isOther = _selectedType.startsWith('වෙනත්');
-      final expense = ExpenseModel(
-        id: '',
-        date: DateTime.now(),
-        type: isOther && _customTypeController.text.trim().isNotEmpty
-            ? _customTypeController.text.trim()
-            : _selectedType,
-        amount: amount,
-        customType: isOther ? _customTypeController.text.trim() : null,
-        note: _noteController.text.trim().isNotEmpty
-            ? _noteController.text.trim()
-            : null,
-      );
+      final finalType = isOther && _customTypeController.text.trim().isNotEmpty
+          ? _customTypeController.text.trim()
+          : _selectedType.split(' ')[0]; // Store clean Sinhala category
 
-      await _firestoreService.addExpense(expense);
+      if (_isEditing) {
+        final updatedExpense = ExpenseModel(
+          id: widget.existingExpense!.id,
+          date: widget.existingExpense!.date,
+          type: finalType,
+          amount: amount,
+          customType: isOther ? _customTypeController.text.trim() : null,
+          note: _noteController.text.trim().isNotEmpty
+              ? _noteController.text.trim()
+              : null,
+        );
 
-      if (!mounted) return;
+        await _firestoreService.updateExpense(updatedExpense);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('වියදම සාර්ථකව සුරකින ලදී'),
-          backgroundColor: Colors.green,
-        ),
-      );
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('වියදම සාර්ථකව යාවත්කාලීන කරන ලදී'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        final expense = ExpenseModel(
+          id: '',
+          date: DateTime.now(),
+          type: finalType,
+          amount: amount,
+          customType: isOther ? _customTypeController.text.trim() : null,
+          note: _noteController.text.trim().isNotEmpty
+              ? _noteController.text.trim()
+              : null,
+        );
+
+        await _firestoreService.addExpense(expense);
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('වියදම සාර්ථකව සුරකින ලදී'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('වියදම සුරැකීමේදී දෝෂයක් ඇතිවිය: $e'),
+          content: Text('දෝෂයක් ඇතිවිය: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -99,19 +153,18 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isOther = _selectedType.startsWith('වෙනත්');
-
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'නව වියදමක්',
+          _isEditing ? 'වියදම සංස්කරණය (Edit Expense)' : 'නව වියදමක්',
           style: GoogleFonts.notoSansSinhala(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor: Colors.redAccent,
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -133,10 +186,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       DropdownButtonFormField<String>(
                         initialValue: _selectedType,
                         decoration: InputDecoration(
-                          labelText: 'වියදම් වර්ගය (Type)',
-                          prefixIcon: const Icon(
-                            Icons.local_gas_station_outlined,
-                          ),
+                          labelText: 'වියදම් වර්ගය (Expense Type)',
+                          prefixIcon: const Icon(Icons.category_outlined),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -155,21 +206,21 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           }
                         },
                       ),
-                      if (isOther) ...[
+                      if (_selectedType.startsWith('වෙනත්')) ...[
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _customTypeController,
                           decoration: InputDecoration(
-                            labelText: 'වියදම කුමක්ද? (Custom Expense Name)',
-                            prefixIcon: const Icon(Icons.edit_note_outlined),
+                            labelText: 'වෙනත් වර්ගය (Custom Type)',
+                            prefixIcon: const Icon(Icons.edit_note),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                           validator: (value) {
-                            if (isOther &&
+                            if (_selectedType.startsWith('වෙනත්') &&
                                 (value == null || value.trim().isEmpty)) {
-                              return 'කරුණාකර වියදම් නම ඇතුලත් කරන්න';
+                              return 'කරුණාකර වියදම් වර්ගය ඇතුලත් කරන්න';
                             }
                             return null;
                           },
@@ -201,9 +252,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _noteController,
-                        maxLines: 3,
+                        maxLines: 2,
                         decoration: InputDecoration(
-                          labelText: 'සටහන (අත්‍යවශ්‍ය නොවේ) - Note',
+                          labelText: 'සටහන (Note - Optional)',
                           prefixIcon: const Icon(Icons.note_alt_outlined),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -218,7 +269,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ElevatedButton(
                 onPressed: _isSaving ? null : _saveExpense,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor,
+                  backgroundColor: Colors.redAccent,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -236,7 +287,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         ),
                       )
                     : Text(
-                        'සුරකින්න',
+                        _isEditing ? 'යාවත්කාලීන කරන්න' : 'සුරකින්න',
                         style: GoogleFonts.notoSansSinhala(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

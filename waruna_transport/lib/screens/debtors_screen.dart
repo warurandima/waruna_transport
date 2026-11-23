@@ -131,28 +131,69 @@ class DebtorsScreen extends StatelessWidget {
                               ),
                             ),
                             subtitle: Text(debtor.phone),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  currencyFormat.format(debtor.totalDue),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: debtor.totalDue > 0
-                                        ? Colors.red
-                                        : Colors.green,
-                                    fontSize: 16,
-                                  ),
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      currencyFormat.format(debtor.totalDue),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: debtor.totalDue > 0
+                                            ? Colors.red
+                                            : Colors.green,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    Text(
+                                      debtor.totalDue > 0
+                                          ? 'හිඟ මුදල'
+                                          : 'පියවා ඇත',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: debtor.totalDue > 0
+                                            ? Colors.red
+                                            : Colors.green,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  debtor.totalDue > 0 ? 'හිඟ මුදල' : 'පියවා ඇත',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: debtor.totalDue > 0
-                                        ? Colors.red
-                                        : Colors.green,
+                                PopupMenuButton<String>(
+                                  icon: const Icon(
+                                    Icons.more_vert,
+                                    size: 20,
+                                    color: Colors.grey,
                                   ),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onSelected: (val) {
+                                    if (val == 'delete') {
+                                      _confirmDeleteDebtor(
+                                        context,
+                                        firestoreService,
+                                        debtor,
+                                      );
+                                    }
+                                  },
+                                  itemBuilder: (ctx) => [
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.delete,
+                                            size: 18,
+                                            color: Colors.red,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text('මකන්න'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -178,6 +219,51 @@ class DebtorsScreen extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+
+  void _confirmDeleteDebtor(
+    BuildContext context,
+    FirestoreService firestoreService,
+    DebtorModel debtor,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'ණයගැතියා මකා දැමීම',
+          style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'මෙම ණයගැතියා (${debtor.name} - ${debtor.phone}) සම්පූර්ණයෙන්ම මකා දැමීමට ඔබට විශ්වාසද?',
+          style: GoogleFonts.notoSansSinhala(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('අවලංගු කරන්න', style: GoogleFonts.notoSansSinhala()),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await firestoreService.deleteDebtor(debtor.phone);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('ණයගැතියා සාර්ථකව මකා දමන ලදී'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: Text(
+              'මකන්න',
+              style: GoogleFonts.notoSansSinhala(color: Colors.white),
+            ),
+          ),
+        ],
       ),
     );
   }
