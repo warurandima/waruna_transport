@@ -6,152 +6,275 @@ import '../models/reminder_model.dart';
 import '../services/firestore_service.dart';
 import '../utils/app_colors.dart';
 
-class RemindersScreen extends StatelessWidget {
+class RemindersScreen extends StatefulWidget {
   const RemindersScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final firestoreService = FirestoreService();
-    final dateFormat = DateFormat('yyyy-MM-dd (EEEE)');
+  State<RemindersScreen> createState() => _RemindersScreenState();
+}
 
+class _RemindersScreenState extends State<RemindersScreen> {
+  final _firestoreService = FirestoreService();
+  final _dateFormat = DateFormat('yyyy-MM-dd (EEEE)');
+  final _dateOnlyFormat = DateFormat('yyyy-MM-dd');
+  String _selectedFilter = 'සියල්ල';
+
+  Widget _buildDateHeader(String dateStr) {
+    return Container(
+      margin: const EdgeInsets.only(top: 14, bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primaryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.primaryColor.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.calendar_today,
+            size: 14,
+            color: AppColors.primaryColor,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            dateStr,
+            style: GoogleFonts.notoSansSinhala(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: AppColors.primaryColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: StreamBuilder<List<ReminderModel>>(
-        stream: firestoreService.getReminders(),
+        stream: _firestoreService.getReminders(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final reminders = snapshot.data ?? [];
-          if (reminders.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.event_note_outlined,
-                    size: 64,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'තවම කිසිදු මතක් කිරීමක් ඇතුලත් කර නැත.',
-                    style: GoogleFonts.notoSansSinhala(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            );
+          final rawReminders = snapshot.data ?? [];
+
+          // Apply filter chips
+          var filteredReminders = rawReminders;
+          if (_selectedFilter == 'ක්‍රියාත්මක වෙමින්') {
+            filteredReminders = rawReminders
+                .where((r) => !r.isCompleted)
+                .toList();
+          } else if (_selectedFilter == 'සම්පූර්ණයි') {
+            filteredReminders = rawReminders
+                .where((r) => r.isCompleted)
+                .toList();
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.only(
-              top: 12,
-              bottom: 80,
-              left: 12,
-              right: 12,
-            ),
-            itemCount: reminders.length,
-            itemBuilder: (context, index) {
-              final reminder = reminders[index];
-              final isDone = reminder.isCompleted;
+          // Sort by targetDate descending
+          filteredReminders.sort(
+            (a, b) => b.targetDate.compareTo(a.targetDate),
+          );
 
-              return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    elevation: isDone ? 0 : 2,
-                    color: isDone
-                        ? (Theme.of(context).brightness == Brightness.dark
-                              ? Colors.grey.shade900
-                              : Colors.grey.shade100)
-                        : null,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: isDone
-                          ? BorderSide(color: Colors.grey.shade300)
-                          : BorderSide.none,
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      leading: Checkbox(
-                        value: isDone,
-                        activeColor: AppColors.primaryColor,
-                        onChanged: (val) {
-                          if (val != null) {
-                            firestoreService.toggleReminderCompletion(
-                              reminder.id,
-                              val,
-                            );
-                          }
+          return Column(
+            children: [
+              // Filter Chips
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: ['සියල්ල', 'ක්‍රියාත්මක වෙමින්', 'සම්පූර්ණයි'].map((
+                    filter,
+                  ) {
+                    final isSelected = _selectedFilter == filter;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(
+                          filter,
+                          style: GoogleFonts.notoSansSinhala(
+                            color: isSelected ? Colors.white : null,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        selected: isSelected,
+                        selectedColor: AppColors.primaryColor,
+                        checkmarkColor: Colors.white,
+                        onSelected: (_) {
+                          setState(() => _selectedFilter = filter);
                         },
                       ),
-                      title: Text(
-                        '${reminder.customerName} - ${reminder.materialType}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          decoration: isDone
-                              ? TextDecoration.lineThrough
-                              : null,
-                          color: isDone ? Colors.grey : null,
+                    );
+                  }).toList(),
+                ),
+              ),
+
+              if (filteredReminders.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.event_note_outlined,
+                          size: 64,
+                          color: Colors.grey.shade400,
                         ),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'ප්‍රමාණය: ${reminder.quantity}',
-                              style: TextStyle(
-                                fontSize: 13,
+                        const SizedBox(height: 12),
+                        Text(
+                          'මතක් කිරීම් නොමැත.',
+                          style: GoogleFonts.notoSansSinhala(
+                            fontSize: 16,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(
+                      top: 4,
+                      bottom: 80,
+                      left: 12,
+                      right: 12,
+                    ),
+                    itemCount: filteredReminders.length,
+                    itemBuilder: (context, index) {
+                      final reminder = filteredReminders[index];
+                      final isDone = reminder.isCompleted;
+
+                      final currentDateStr = _dateOnlyFormat.format(
+                        reminder.targetDate,
+                      );
+                      final prevDateStr = index > 0
+                          ? _dateOnlyFormat.format(
+                              filteredReminders[index - 1].targetDate,
+                            )
+                          : null;
+                      final showHeader =
+                          index == 0 || currentDateStr != prevDateStr;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (showHeader) _buildDateHeader(currentDateStr),
+                          Card(
+                                margin: const EdgeInsets.symmetric(vertical: 6),
+                                elevation: isDone ? 0 : 2,
                                 color: isDone
-                                    ? Colors.grey
-                                    : Colors.grey.shade700,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.calendar_today,
-                                  size: 13,
-                                  color: isDone
-                                      ? Colors.grey
-                                      : AppColors.primaryColor,
+                                    ? (Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.grey.shade900
+                                          : Colors.grey.shade100)
+                                    : null,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  side: isDone
+                                      ? BorderSide(color: Colors.grey.shade300)
+                                      : BorderSide.none,
                                 ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    dateFormat.format(reminder.targetDate),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  leading: Checkbox(
+                                    value: isDone,
+                                    activeColor: AppColors.primaryColor,
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        _firestoreService
+                                            .toggleReminderCompletion(
+                                              reminder.id,
+                                              val,
+                                            );
+                                      }
+                                    },
+                                  ),
+                                  title: Text(
+                                    '${reminder.customerName} - ${reminder.materialType}',
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDone
-                                          ? Colors.grey
-                                          : AppColors.primaryColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      decoration: isDone
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                      color: isDone ? Colors.grey : null,
+                                    ),
+                                  ),
+                                  subtitle: Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'ප්‍රමාණය: ${reminder.quantity}',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: isDone
+                                                ? Colors.grey
+                                                : Colors.grey.shade700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.calendar_today,
+                                              size: 13,
+                                              color: isDone
+                                                  ? Colors.grey
+                                                  : AppColors.primaryColor,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                _dateFormat.format(
+                                                  reminder.targetDate,
+                                                ),
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDone
+                                                      ? Colors.grey
+                                                      : AppColors.primaryColor,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                  .animate()
-                  .fade(
-                    delay: (index < 10 ? index * 50 : 0).ms,
-                    duration: 400.ms,
-                  )
-                  .slideX(begin: 0.1);
-            },
+                              )
+                              .animate()
+                              .fade(
+                                delay: (index < 10 ? index * 40 : 0).ms,
+                                duration: 350.ms,
+                              )
+                              .slideX(begin: 0.05),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+            ],
           );
         },
       ),

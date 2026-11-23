@@ -13,6 +13,7 @@ import '../utils/page_transitions.dart';
 import 'add_order_screen.dart';
 import 'add_expense_screen.dart';
 import 'add_reminder_screen.dart';
+import 'bank_details_screen.dart';
 import 'debtors_screen.dart';
 import 'reminders_screen.dart';
 import 'reset_pin_screen.dart';
@@ -34,6 +35,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
     decimalDigits: 2,
   );
   final _dateFormat = DateFormat('yyyy-MM-dd HH:mm');
+  final _dateOnlyFormat = DateFormat('yyyy-MM-dd');
+
+  // Home Tab Month/Year selection
+  late DateTime _selectedMonth;
+
+  // Orders Tab Filter
+  String _orderFilter = 'සියල්ල';
+
+  // Expenses Tab Filter
+  String _expenseFilter = 'සියල්ල';
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedMonth = DateTime(now.year, now.month);
+  }
+
+  String _getMonthSinhalaName(int month) {
+    const months = [
+      '',
+      'ජනවාරි (Jan)',
+      'පෙබරවාරි (Feb)',
+      'මාර්තු (Mar)',
+      'අප්‍රේල් (Apr)',
+      'මැයි (May)',
+      'ජූනි (Jun)',
+      'ජූලි (Jul)',
+      'අගෝස්තු (Aug)',
+      'සැප්තැම්බර් (Sep)',
+      'ඔක්තෝබර් (Oct)',
+      'නොවැම්බර් (Nov)',
+      'දෙසැම්බර් (Dec)',
+    ];
+    return months[month];
+  }
+
+  Widget _buildDateHeader(String dateStr) {
+    return Container(
+      margin: const EdgeInsets.only(top: 14, bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primaryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.primaryColor.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.calendar_today,
+            size: 14,
+            color: AppColors.primaryColor,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            dateStr,
+            style: GoogleFonts.notoSansSinhala(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: AppColors.primaryColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +135,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         backgroundColor: AppColors.primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
         centerTitle: true,
         actions: [
@@ -89,6 +160,152 @@ class _DashboardScreenState extends State<DashboardScreen> {
             },
           ),
         ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(color: AppColors.secondaryColor),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      height: 54,
+                      width: 54,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'WARUNA TRANSPORT',
+                    style: TextStyle(
+                      color: AppColors.primaryColor,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  Text(
+                    'වරුණ ට්‍රාන්ස්පෝර්ට්',
+                    style: GoogleFonts.notoSansSinhala(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home, color: AppColors.primaryColor),
+              title: Text(
+                'මුල් පිටුව',
+                style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedIndex = 0);
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.local_shipping,
+                color: AppColors.primaryColor,
+              ),
+              title: Text(
+                'ඇණවුම්',
+                style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedIndex = 1);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.attach_money, color: Colors.redAccent),
+              title: Text(
+                'වියදම්',
+                style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedIndex = 2);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.alarm, color: Colors.orange),
+              title: Text(
+                'මතක් කිරීම්',
+                style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedIndex = 3);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.people, color: Colors.teal),
+              title: Text(
+                'ණය කළමනාකරණය',
+                style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedIndex = 4);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(
+                Icons.account_balance,
+                color: AppColors.primaryColor,
+              ),
+              title: Text(
+                'බැංකු ගිණුම් (Bank Accounts)',
+                style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  SlideFadePageRoute(page: const BankDetailsScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings, color: Colors.blueGrey),
+              title: Text(
+                'සැකසුම් (Settings)',
+                style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  SlideFadePageRoute(page: const SettingsScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.lock_reset, color: Colors.blueGrey),
+              title: Text(
+                'PIN අංකය වෙනස් කරන්න',
+                style: GoogleFonts.notoSansSinhala(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  SlideFadePageRoute(page: const ResetPinScreen()),
+                );
+              },
+            ),
+          ],
+        ),
       ),
       body: IndexedStack(
         index: _selectedIndex,
@@ -203,23 +420,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
             final orders = ordersSnapshot.data ?? [];
             final expenses = expensesSnapshot.data ?? [];
 
-            // Monthly calculations (current month up to today)
-            final currentMonthOrders = orders
+            // Filter by the selected month from global dropdown
+            final selectedMonthOrders = orders
                 .where(
-                  (o) => o.date.year == now.year && o.date.month == now.month,
+                  (o) =>
+                      o.date.year == _selectedMonth.year &&
+                      o.date.month == _selectedMonth.month,
                 )
                 .toList();
-            final currentMonthExpenses = expenses
+            final selectedMonthExpenses = expenses
                 .where(
-                  (e) => e.date.year == now.year && e.date.month == now.month,
+                  (e) =>
+                      e.date.year == _selectedMonth.year &&
+                      e.date.month == _selectedMonth.month,
                 )
                 .toList();
 
-            final monthlyIncome = currentMonthOrders.fold<double>(
+            final monthlyIncome = selectedMonthOrders.fold<double>(
               0.0,
               (sum, item) => sum + item.amount,
             );
-            final monthlyExpense = currentMonthExpenses.fold<double>(
+            final monthlyExpense = selectedMonthExpenses.fold<double>(
               0.0,
               (sum, item) => sum + item.amount,
             );
@@ -404,15 +625,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                   ),
 
-                  Text(
-                    'මෙම මාසයේ දළ සටහන (This Month)',
-                    style: GoogleFonts.notoSansSinhala(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.secondaryColor,
+                  // Month Selection Header & Global Dropdown
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'මාසික දළ සටහන (Monthly Summary)',
+                          style: GoogleFonts.notoSansSinhala(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.secondaryColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Prominent Global Dropdown for Month/Year
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.primaryColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_month,
+                          color: AppColors.primaryColor,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<DateTime>(
+                              value: _selectedMonth,
+                              isExpanded: true,
+                              icon: const Icon(
+                                Icons.arrow_drop_down,
+                                color: AppColors.primaryColor,
+                              ),
+                              items: List.generate(12, (index) {
+                                final d = DateTime(
+                                  now.year,
+                                  now.month - index,
+                                  1,
+                                );
+                                return DropdownMenuItem(
+                                  value: d,
+                                  child: Text(
+                                    '${_getMonthSinhalaName(d.month)} ${d.year}',
+                                    style: GoogleFonts.notoSansSinhala(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                );
+                              }),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() => _selectedMonth = val);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),
+
                   Row(
                     children: [
                       Expanded(
@@ -461,8 +751,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ElevatedButton.icon(
                     onPressed: () {
                       _pdfService.generateMonthlyReport(
-                        currentMonthOrders,
-                        currentMonthExpenses,
+                        selectedMonthOrders,
+                        selectedMonthExpenses,
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -476,7 +766,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
                     label: Text(
-                      'මාසික වාර්තාව (PDF Report)',
+                      'තෝරාගත් මාසයේ වාර්තාව (PDF Report)',
                       style: GoogleFonts.notoSansSinhala(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -588,44 +878,113 @@ class _DashboardScreenState extends State<DashboardScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final orders = snapshot.data ?? [];
-        if (orders.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.inventory_2_outlined,
-                  size: 64,
-                  color: Colors.grey.shade400,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'තවම කිසිදු ඇණවුමක් ඇතුලත් කර නැත.',
-                  style: GoogleFonts.notoSansSinhala(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          );
+        final rawOrders = snapshot.data ?? [];
+
+        // Apply filter chips
+        var filteredOrders = rawOrders;
+        if (_orderFilter == 'ක්‍රියාත්මක වෙමින්') {
+          filteredOrders = rawOrders.where((o) => !o.isCompleted).toList();
+        } else if (_orderFilter == 'සම්පූර්ණයි') {
+          filteredOrders = rawOrders.where((o) => o.isCompleted).toList();
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.only(
-            top: 8,
-            bottom: 80,
-            left: 12,
-            right: 12,
-          ),
-          itemCount: orders.length,
-          itemBuilder: (context, index) {
-            return _buildOrderTile(orders[index])
-                .animate()
-                .fade(delay: (index < 10 ? index * 50 : 0).ms, duration: 400.ms)
-                .slideX(begin: 0.1);
-          },
+        // Sort by date descending
+        filteredOrders.sort((a, b) => b.date.compareTo(a.date));
+
+        return Column(
+          children: [
+            // Filter Chips
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: ['සියල්ල', 'ක්‍රියාත්මක වෙමින්', 'සම්පූර්ණයි'].map((
+                  filter,
+                ) {
+                  final isSelected = _orderFilter == filter;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(
+                        filter,
+                        style: GoogleFonts.notoSansSinhala(
+                          color: isSelected ? Colors.white : null,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      selected: isSelected,
+                      selectedColor: AppColors.primaryColor,
+                      checkmarkColor: Colors.white,
+                      onSelected: (_) {
+                        setState(() => _orderFilter = filter);
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+            if (filteredOrders.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.inventory_2_outlined,
+                        size: 64,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'ඇණවුම් නොමැත.',
+                        style: GoogleFonts.notoSansSinhala(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(
+                    top: 4,
+                    bottom: 80,
+                    left: 12,
+                    right: 12,
+                  ),
+                  itemCount: filteredOrders.length,
+                  itemBuilder: (context, index) {
+                    final order = filteredOrders[index];
+                    final currentDateStr = _dateOnlyFormat.format(order.date);
+                    final prevDateStr = index > 0
+                        ? _dateOnlyFormat.format(filteredOrders[index - 1].date)
+                        : null;
+                    final showHeader =
+                        index == 0 || currentDateStr != prevDateStr;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (showHeader) _buildDateHeader(currentDateStr),
+                        _buildOrderTile(order)
+                            .animate()
+                            .fade(
+                              delay: (index < 10 ? index * 40 : 0).ms,
+                              duration: 350.ms,
+                            )
+                            .slideX(begin: 0.05),
+                      ],
+                    );
+                  },
+                ),
+              ),
+          ],
         );
       },
     );
@@ -639,87 +998,178 @@ class _DashboardScreenState extends State<DashboardScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final expenses = snapshot.data ?? [];
-        if (expenses.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.receipt_long_outlined,
-                  size: 64,
-                  color: Colors.grey.shade400,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'තවම කිසිදු වියදමක් ඇතුලත් කර නැත.',
-                  style: GoogleFonts.notoSansSinhala(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          );
+        final rawExpenses = snapshot.data ?? [];
+
+        // Apply filter chips
+        var filteredExpenses = rawExpenses;
+        if (_expenseFilter == 'තෙල්') {
+          filteredExpenses = rawExpenses
+              .where((e) => e.type == 'තෙල්' || e.type == 'Fuel')
+              .toList();
+        } else if (_expenseFilter == 'නඩත්තු') {
+          filteredExpenses = rawExpenses
+              .where((e) => e.type == 'නඩත්තු' || e.type == 'Maintenance')
+              .toList();
+        } else if (_expenseFilter == 'වෙනත්') {
+          filteredExpenses = rawExpenses
+              .where(
+                (e) =>
+                    e.type != 'තෙල්' &&
+                    e.type != 'Fuel' &&
+                    e.type != 'නඩත්තු' &&
+                    e.type != 'Maintenance',
+              )
+              .toList();
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.only(
-            top: 8,
-            bottom: 80,
-            left: 12,
-            right: 12,
-          ),
-          itemCount: expenses.length,
-          itemBuilder: (context, index) {
-            final expense = expenses[index];
-            final titleText =
-                expense.customType != null && expense.customType!.isNotEmpty
-                ? expense.customType!
-                : expense.type;
+        // Sort by date descending
+        filteredExpenses.sort((a, b) => b.date.compareTo(a.date));
 
-            return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+        return Column(
+          children: [
+            // Filter Chips
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: ['සියල්ල', 'තෙල්', 'නඩත්තු', 'වෙනත්'].map((filter) {
+                  final isSelected = _expenseFilter == filter;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(
+                        filter,
+                        style: GoogleFonts.notoSansSinhala(
+                          color: isSelected ? Colors.white : null,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      selected: isSelected,
+                      selectedColor: Colors.redAccent,
+                      checkmarkColor: Colors.white,
+                      onSelected: (_) {
+                        setState(() => _expenseFilter = filter);
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+            if (filteredExpenses.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.receipt_long_outlined,
+                        size: 64,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'වියදම් නොමැත.',
+                        style: GoogleFonts.notoSansSinhala(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
                   ),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.red.withValues(alpha: 0.15),
-                      child: const Icon(Icons.money_off, color: Colors.red),
-                    ),
-                    title: Text(
-                      titleText,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Column(
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(
+                    top: 4,
+                    bottom: 80,
+                    left: 12,
+                    right: 12,
+                  ),
+                  itemCount: filteredExpenses.length,
+                  itemBuilder: (context, index) {
+                    final expense = filteredExpenses[index];
+                    final titleText =
+                        expense.customType != null &&
+                            expense.customType!.isNotEmpty
+                        ? expense.customType!
+                        : expense.type;
+
+                    final currentDateStr = _dateOnlyFormat.format(expense.date);
+                    final prevDateStr = index > 0
+                        ? _dateOnlyFormat.format(
+                            filteredExpenses[index - 1].date,
+                          )
+                        : null;
+                    final showHeader =
+                        index == 0 || currentDateStr != prevDateStr;
+
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (expense.note != null && expense.note!.isNotEmpty)
-                          Text(expense.note!),
-                        Text(
-                          _dateFormat.format(expense.date),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
+                        if (showHeader) _buildDateHeader(currentDateStr),
+                        Card(
+                              margin: const EdgeInsets.symmetric(vertical: 6),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.red.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  child: const Icon(
+                                    Icons.money_off,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                                title: Text(
+                                  titleText,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (expense.note != null &&
+                                        expense.note!.isNotEmpty)
+                                      Text(expense.note!),
+                                    Text(
+                                      _dateFormat.format(expense.date),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                trailing: Text(
+                                  _currencyFormat.format(expense.amount),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .animate()
+                            .fade(
+                              delay: (index < 10 ? index * 40 : 0).ms,
+                              duration: 350.ms,
+                            )
+                            .slideX(begin: 0.05),
                       ],
-                    ),
-                    trailing: Text(
-                      _currencyFormat.format(expense.amount),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                )
-                .animate()
-                .fade(delay: (index < 10 ? index * 50 : 0).ms, duration: 400.ms)
-                .slideX(begin: 0.1);
-          },
+                    );
+                  },
+                ),
+              ),
+          ],
         );
       },
     );

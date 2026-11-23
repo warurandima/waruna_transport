@@ -4,6 +4,7 @@ import '../models/expense_model.dart';
 import '../models/debtor_model.dart';
 import '../models/service_model.dart';
 import '../models/reminder_model.dart';
+import '../models/bank_account_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -22,6 +23,9 @@ class FirestoreService {
 
   CollectionReference<Map<String, dynamic>> get _remindersCollection =>
       _firestore.collection('order_reminders');
+
+  CollectionReference<Map<String, dynamic>> get _bankAccountsCollection =>
+      _firestore.collection('bank_accounts');
 
   // --- ORDERS ---
   Future<void> addOrder(OrderModel order) async {
@@ -209,5 +213,34 @@ class FirestoreService {
 
   Future<void> toggleReminderCompletion(String id, bool status) async {
     await _remindersCollection.doc(id).update({'isCompleted': status});
+  }
+
+  // --- BANK ACCOUNTS ---
+  Future<void> addBankAccount(BankAccountModel account) async {
+    final docRef = _bankAccountsCollection.doc();
+    final newAccount = BankAccountModel(
+      id: docRef.id,
+      accountName: account.accountName,
+      accountNumber: account.accountNumber,
+      bankName: account.bankName,
+      branchName: account.branchName,
+    );
+    await docRef.set(newAccount.toMap());
+  }
+
+  Stream<List<BankAccountModel>> getBankAccounts() {
+    return _bankAccountsCollection.snapshots().map((snapshot) {
+      return snapshot.docs
+          .map((doc) => BankAccountModel.fromMap(doc.data(), doc.id))
+          .toList();
+    });
+  }
+
+  Future<void> updateBankAccount(BankAccountModel account) async {
+    await _bankAccountsCollection.doc(account.id).update(account.toMap());
+  }
+
+  Future<void> deleteBankAccount(String id) async {
+    await _bankAccountsCollection.doc(id).delete();
   }
 }

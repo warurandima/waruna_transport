@@ -10,7 +10,13 @@ class PdfService {
     List<OrderModel> orders,
     List<ExpenseModel> expenses,
   ) async {
-    final pdf = pw.Document();
+    // Load Sinhala-supporting fonts from Google Fonts for PDF rendering
+    final font = await PdfGoogleFonts.notoSansSinhalaRegular();
+    final boldFont = await PdfGoogleFonts.notoSansSinhalaBold();
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(base: font, bold: boldFont),
+    );
 
     final totalIncome = orders.fold<double>(0.0, (sum, o) => sum + o.amount);
     final totalExpenses = expenses.fold<double>(
